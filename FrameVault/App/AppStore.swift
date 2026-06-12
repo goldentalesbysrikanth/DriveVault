@@ -243,6 +243,13 @@ final class AppStore: ObservableObject {
         print("✅ proceeding for: \(volumeName)")
         logAppEvent(.driveConnected, detail: volumeName)
 
+        // Only prompt/index if drive has never been indexed
+        let isFirstIndex = db.isDriveFirstIndex(id: volumeName)
+        if !isFirstIndex && !declinedDrives.contains(volumeName) {
+            print("✅ already indexed, skipping prompt for: \(volumeName)")
+            return
+        }
+
         if promptEnabled {
             if showIndexPrompt {
                 pendingPromptQueue.append(volumeURL)

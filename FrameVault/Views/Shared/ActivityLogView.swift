@@ -16,6 +16,13 @@ enum AppEventKind: String, CaseIterable {
     case settingsChanged   = "settings_changed"
     case cloudSync         = "cloud_sync"
     case tokenSync         = "token_sync"
+    case appOpened         = "app_opened"
+    case appClosed         = "app_closed"
+    case indexComplete     = "index_complete"
+    case indexSkipped      = "index_skipped"
+    case activityLogReset  = "activity_log_reset"
+    case databaseRestored  = "database_restored"
+    case passcodeChanged   = "passcode_changed"
 
     var label: String {
         switch self {
@@ -31,6 +38,13 @@ enum AppEventKind: String, CaseIterable {
         case .settingsChanged:  return "Settings changed"
         case .cloudSync:        return "Cloud sync"
         case .tokenSync:        return "Token sync"
+        case .appOpened:        return "App opened"
+        case .appClosed:        return "App closed"
+        case .indexComplete:    return "Index complete"
+        case .indexSkipped:     return "Index skipped"
+        case .activityLogReset: return "Activity log reset"
+        case .databaseRestored: return "Database restored"
+        case .passcodeChanged:  return "Passcode changed"
         }
     }
 
@@ -48,6 +62,13 @@ enum AppEventKind: String, CaseIterable {
         case .settingsChanged:  return "gearshape"
         case .cloudSync:        return "icloud.and.arrow.up"
         case .tokenSync:        return "key.horizontal"
+        case .appOpened:        return "power"
+        case .appClosed:        return "power.dotted"
+        case .indexComplete:    return "checkmark.circle.fill"
+        case .indexSkipped:     return "forward.fill"
+        case .activityLogReset: return "clock.badge.xmark"
+        case .databaseRestored: return "arrow.counterclockwise.circle"
+        case .passcodeChanged:  return "lock.rotation"
         }
     }
 
@@ -65,6 +86,13 @@ enum AppEventKind: String, CaseIterable {
         case .settingsChanged:  return .gray
         case .cloudSync:        return .cyan
         case .tokenSync:        return .indigo
+        case .appOpened:        return .green
+        case .appClosed:        return .secondary
+        case .indexComplete:    return .green
+        case .indexSkipped:     return .orange
+        case .activityLogReset: return .red
+        case .databaseRestored: return .purple
+        case .passcodeChanged:  return .indigo
         }
     }
 }

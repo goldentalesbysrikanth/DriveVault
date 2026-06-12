@@ -104,11 +104,13 @@ final class WindowManager: NSObject, NSWindowDelegate {
         if let action = openWindow { storedOpenWindow = action }
 
         if let window = existingMainWindow() {
+            // Window exists — just bring it to front, don't open a new one
             attachDelegate(to: window)
             NSApp.setActivationPolicy(.regular)
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
         } else if let action = storedOpenWindow {
+            // Only open if no window exists
             action(id: "main")
             NSApp.setActivationPolicy(.regular)
             NSApp.activate(ignoringOtherApps: true)
