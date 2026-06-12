@@ -1,0 +1,435 @@
+<Page
+    x:Class="DriveVault.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DriveVault.Views"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="24" MaxWidth="600">
+
+            <TextBlock Text="Settings"
+                       Style="{ThemeResource TitleTextBlockStyle}"/>
+
+            <!-- LICENSE -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="LICENSE"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock x:Name="TrialStatusText"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock x:Name="TrialEndText"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="Purchase License"
+                                Click="PurchaseLicense_Click"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- STARTUP -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="STARTUP"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Launch Drive Vault when Windows starts"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+                            <TextBlock Text="Drive Vault will start automatically in the background when you log in."
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1"
+                                      x:Name="LaunchAtStartupToggle"
+                                      OnContent="" OffContent=""
+                                      Toggled="LaunchAtStartupToggle_Toggled"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- INDEXING -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="INDEXING"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Auto-index when a drive connects"
+                                           Style="{ThemeResource BodyTextBlockStyle}"/>
+                                <TextBlock Text="Automatically scans folders whenever a drive is connected."
+                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1"
+                                          x:Name="AutoIndexToggle"
+                                          OnContent="" OffContent=""
+                                          Toggled="AutoIndexToggle_Toggled"/>
+                        </Grid>
+                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="0,1,0,0"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Ask before indexing a new drive"
+                                           Style="{ThemeResource BodyTextBlockStyle}"/>
+                                <TextBlock Text="Shows a confirmation dialog before scanning any newly connected drive."
+                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1"
+                                          x:Name="AskBeforeIndexToggle"
+                                          OnContent="" OffContent=""
+                                          Toggled="AskBeforeIndexToggle_Toggled"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ALERTS -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="ALERTS"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="12">
+                        <StackPanel Spacing="6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="Warn when drive is full"
+                                           Style="{ThemeResource BodyTextBlockStyle}"/>
+                                <TextBlock Grid.Column="1"
+                                           x:Name="AlertThresholdText" Text="90%"
+                                           Style="{ThemeResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </Grid>
+                            <Slider x:Name="AlertThresholdSlider"
+                                    Minimum="70" Maximum="99" StepFrequency="5"
+                                    ValueChanged="AlertThresholdSlider_ValueChanged"/>
+                        </StackPanel>
+                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="0,1,0,0"/>
+                        <StackPanel Spacing="6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="Warn if drive not seen for"
+                                           Style="{ThemeResource BodyTextBlockStyle}"/>
+                                <TextBlock Grid.Column="1"
+                                           x:Name="AlertDaysText" Text="3 days"
+                                           Style="{ThemeResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </Grid>
+                            <Slider x:Name="AlertDaysSlider"
+                                    Minimum="1" Maximum="30" StepFrequency="1"
+                                    ValueChanged="AlertDaysSlider_ValueChanged"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- EXCLUDED DRIVES -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="EXCLUDED DRIVES"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Drives in this list will never be indexed."
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        <ListView x:Name="ExcludedDrivesListView"
+                                  SelectionMode="None" MaxHeight="150">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding}"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Content="✕"
+                                                Tag="{Binding}"
+                                                Click="RemoveExcludedDrive_Click"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     x:Name="NewExcludedDriveBox"
+                                     PlaceholderText="Drive name e.g. Backup"
+                                     Margin="0,0,8,0"/>
+                            <Button Grid.Column="1" Content="Add"
+                                    Click="AddExcludedDrive_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ✅ APP SECURITY — NEW -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="APP SECURITY"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="12">
+
+                        <!-- Passcode Set/Change -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="App Passcode"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Protect sensitive actions: export, reset, change password."
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock x:Name="PasscodeStatusText"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Name="SetPasscodeBtn"
+                                        Content="Set Passcode"
+                                        Click="SetPasscode_Click"/>
+                                <Button x:Name="RemovePasscodeBtn"
+                                        Content="Remove Passcode"
+                                        Click="RemovePasscode_Click"
+                                        Visibility="Collapsed"/>
+                                <HyperlinkButton x:Name="ForgotPasscodeBtn"
+                     Content="Forgot Passcode?"
+                     Click="ForgotPasscode_Click"
+                     Visibility="Collapsed"
+                     Foreground="#9B59B6"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="0,1,0,0"/>
+
+                        <!-- App Lock -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="App Lock"
+                                           Style="{ThemeResource BodyTextBlockStyle}"/>
+                                <TextBlock Text="Require passcode when app resumes from background."
+                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1"
+                                          x:Name="AppLockToggle"
+                                          OnContent="" OffContent=""
+                                          Toggled="AppLockToggle_Toggled"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ACTIVITY LOG -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="ACTIVITY LOG"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Set a password to protect export and reset operations."
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <PasswordBox Grid.Column="0"
+                                         x:Name="ActivityPasswordBox"
+                                         PlaceholderText="Set activity log password"
+                                         Margin="0,0,8,0"/>
+                            <Button Grid.Column="1" Content="Save"
+                                    Click="SavePassword_Click"/>
+                        </Grid>
+                        <TextBlock x:Name="PasswordStatusText"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ✅ DATABASE — Backup & Restore added -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="DATABASE"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="12">
+
+                        <!-- DB Path -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Location"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock x:Name="DbPathText"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="0,1,0,0"/>
+
+                        <!-- Backup -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Backup"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Auto backup runs daily. Last 7 days kept automatically."
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock x:Name="LastBackupText"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <Button Content="📦 Create Manual Backup"
+                                    Click="CreateBackup_Click"/>
+                        </StackPanel>
+
+                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="0,1,0,0"/>
+
+                        <!-- Restore -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Restore"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Restore database to a previous backup point."
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                            <Button Content="🔄 Restore from Backup..."
+                                    Click="RestoreBackup_Click"/>
+                        </StackPanel>
+
+                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="0,1,0,0"/>
+
+                        <!-- Actions -->
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <HyperlinkButton Content="Open in Explorer"
+                                             Click="OpenDbFolder_Click"/>
+                            <HyperlinkButton Content="Reset App..."
+                                             Foreground="Red"
+                                             Click="ResetApp_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ABOUT -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="ABOUT"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Version"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+                            <TextBlock Grid.Column="1" Text="1.2.1"
+                                       Style="{ThemeResource BodyTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Build"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+                            <TextBlock Grid.Column="1" Text="2"
+                                       Style="{ThemeResource BodyTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Copyright"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="© 2026 DriveVault. All Rights Reserved."
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <HyperlinkButton Content="drivevault.app"
+                                             NavigateUri="https://drivevault.app"/>
+                            <HyperlinkButton Content="Send feedback"
+                                             NavigateUri="mailto:support@drivevault.app"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

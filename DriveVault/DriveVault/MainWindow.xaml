@@ -1,0 +1,68 @@
+<Window
+    x:Class="DriveVault.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DriveVault"
+    Title="Drive Vault">
+
+    <Grid x:Name="RootGrid">
+        <NavigationView
+            x:Name="NavView"
+            PaneDisplayMode="Left"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleButtonVisible="True"
+            IsSettingsVisible="False"
+            SelectionChanged="NavView_SelectionChanged"
+            OpenPaneLength="200">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Overview" Tag="overview">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE80F;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Drives" Tag="drives">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xEDA2;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Library" Tag="folders">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8B7;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Clients" Tag="clients">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE716;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Activity" Tag="activity">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE823;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="Settings" Tag="settings">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE713;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <AutoSuggestBox
+                    Grid.Row="0"
+                    x:Name="SearchBox"
+                    PlaceholderText="Search drives, folders, clients..."
+                    QueryIcon="Find"
+                    Margin="16,8,16,8"
+                    TextChanged="SearchBox_TextChanged"
+                    SuggestionChosen="SearchBox_SuggestionChosen"/>
+                <Frame Grid.Row="1" x:Name="ContentFrame"/>
+            </Grid>
+        </NavigationView>
+    </Grid>
+</Window>

@@ -1,0 +1,87 @@
+<Page
+    x:Class="DriveVault.Views.TrialExpiredPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DriveVault.Views"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="24"
+                    MaxWidth="480"
+                    Padding="32">
+
+            <!-- Icon -->
+            <TextBlock Text="🔒"
+                       FontSize="64"
+                       HorizontalAlignment="Center"/>
+
+            <!-- Title -->
+            <TextBlock Text="Your Trial Has Ended"
+                       Style="{ThemeResource TitleLargeTextBlockStyle}"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"/>
+
+            <!-- Subtitle -->
+            <TextBlock Text="Thank you for trying Drive Vault! Your 10-day trial has expired. Purchase a license to continue tracking your drives and shoots."
+                       Style="{ThemeResource BodyTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"/>
+
+            <!-- Features -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="What you get with a license:"
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="✅  Unlimited drives and shoots"
+                                   Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="✅  Auto-indexing and monitoring"
+                                   Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="✅  Activity log and export"
+                                   Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="✅  Drive health monitoring"
+                                   Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="✅  Lifetime updates"
+                                   Style="{ThemeResource BodyTextBlockStyle}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Buttons -->
+            <StackPanel Spacing="12">
+                <Button x:Name="PurchaseButton"
+                        Content="Purchase License →"
+                        HorizontalAlignment="Stretch"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Click="PurchaseButton_Click"
+                        Height="48"/>
+
+                <Button x:Name="EnterLicenseButton"
+                        Content="Enter License Key"
+                        HorizontalAlignment="Stretch"
+                        Click="EnterLicenseButton_Click"
+                        Height="40"/>
+
+                <HyperlinkButton Content="Continue in read-only mode"
+                                 HorizontalAlignment="Center"
+                                 Click="ReadOnlyButton_Click"/>
+            </StackPanel>
+
+            <!-- Trial end date -->
+            <TextBlock x:Name="TrialEndText"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"/>
+
+        </StackPanel>
+    </Grid>
+</Page>

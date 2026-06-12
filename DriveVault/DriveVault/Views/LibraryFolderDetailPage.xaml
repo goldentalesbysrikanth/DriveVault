@@ -1,0 +1,93 @@
+<Page
+    x:Class="DriveVault.Views.LibraryFolderDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DriveVault.Views"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Back + Title -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal"
+                    Spacing="12" Margin="0,0,0,16">
+            <Button x:Name="BackButton"
+                    Content="← Back"
+                    Click="BackButton_Click"/>
+            <TextBlock x:Name="TitleText"
+                       Text="Folder"
+                       Style="{ThemeResource TitleTextBlockStyle}"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Info Card -->
+        <Border Grid.Row="1"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="8"
+                Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Text="Total Size"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="TotalSizeText"
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Text="Total Files"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="TotalFilesText"
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock Text="Drive"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="DriveNameText"
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="3" Spacing="4">
+                    <TextBlock Text="Created"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="CreatedText"
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- File Type Summary -->
+        <Border Grid.Row="2"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="8"
+                Padding="16" Margin="0,0,0,16">
+            <StackPanel Spacing="4">
+                <TextBlock Text="File Types"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <StackPanel x:Name="FileTypesPanel"
+                            Orientation="Horizontal"
+                            Spacing="8"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Tree View -->
+        <ScrollViewer Grid.Row="3">
+            <StackPanel x:Name="TreeContainer" Spacing="2"/>
+        </ScrollViewer>
+    </Grid>
+</Page>
