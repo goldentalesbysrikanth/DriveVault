@@ -189,11 +189,7 @@ namespace DriveVault.Services
                         var existing = existingDrives.FirstOrDefault(
     d => d.MountPath == mountPath);
 
-                        if (existing == null)
-                            existing = existingDrives.FirstOrDefault(
-                                d => d.SerialNumber == serial &&
-                                     !string.IsNullOrEmpty(serial) &&
-                                     serial.Length > 1);
+                        
 
                         if (_skippedDrives.Contains(mountPath) && existing != null)
                         {
@@ -322,6 +318,8 @@ namespace DriveVault.Services
         {
             try
             {
+                // ✅ Debug
+                System.Diagnostics.Debug.WriteLine($"IndexDriveFull called: {drive.Label} — Connected: {drive.IsConnected} — MountPath: {drive.MountPath}");
                 var oldFolders = DatabaseHelper.GetFoldersByDrive(drive.Id);
                 foreach (var old in oldFolders)
                     DatabaseHelper.DeleteFolder(old.Id);

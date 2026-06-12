@@ -525,6 +525,12 @@ namespace DriveVault.Views
                 removeBtn.Click += async (s, _) =>
                 {
                     parentDialog?.Hide();
+                    DatabaseHelper.DeleteWorkflow(vm.FolderName);
+                    DatabaseHelper.LogActivity(
+                        "workflow_removed", "", "",
+                        $"Workflow Removed: {vm.FolderName}",
+                        "System");
+                    LoadData();
                     var confirm = new ContentDialog
                     {
                         Title = "Remove Workflow",
@@ -918,7 +924,10 @@ namespace DriveVault.Views
             // ✅ Workflow attach/update log
             DatabaseHelper.LogActivity(
                 isNew ? "workflow_attached" : "workflow_updated",
-                "", "", clientName, "System");
+                "", "",
+                isNew ? $"Workflow Attached: {clientName}"
+                      : $"Workflow Updated: {clientName}",
+                "System");
         }
 
         public async System.Threading.Tasks.Task

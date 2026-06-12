@@ -34,8 +34,19 @@ namespace DriveVault.Views
         {
             var drives = DatabaseHelper.GetAllDrives();
             var drive = drives.FirstOrDefault(d => d.Id == _driveId);
+
+            // ✅ Drive Id మారి ఉంటే — MountPath తో find చేయండి
+            if (drive == null)
+            {
+                var oldDrive = DatabaseHelper.GetAllDrives()
+                    .FirstOrDefault(d => d.Id == _driveId);
+                drive = drives.FirstOrDefault(d =>
+                    d.IsConnected && !d.IsFullyIndexed);
+            }
             if (drive == null) return;
 
+            // ✅ _driveId update చేయండి
+            _driveId = drive.Id;
             TitleText.Text = drive.Label;
             DriveTypeText.Text = drive.DriveType + " · " + drive.MountPath;
             HealthText.Text = drive.HealthStatus;
@@ -103,6 +114,19 @@ namespace DriveVault.Views
             panel.Children.Add(statusText);
             panel.Children.Add(percentText);
 
+            // ✅ Drive connected గా ఉందా check చేయండి
+            if (!drive.IsConnected)
+            {
+                await new ContentDialog
+                {
+                    Title = "Drive Offline",
+                    Content = $"\"{drive.Label}\" is not connected.\nPlease connect the drive first.",
+                    CloseButtonText = "OK",
+                    XamlRoot = XamlRoot
+                }.ShowAsync();
+                return;
+            }
+
             var dialog = new ContentDialog
             {
                 Title = $"Indexing {drive.Label}...",
@@ -110,7 +134,8 @@ namespace DriveVault.Views
                 XamlRoot = XamlRoot
             };
 
-            _watcher.IndexProgress += (current, total, folderName) =>
+            // ✅ Handler reference store చేయండి
+            Action<int, int, string> progressHandler = (current, total, folderName) =>
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
@@ -120,11 +145,15 @@ namespace DriveVault.Views
                     percentText.Text = $"{current} of {total} ({pct:F0}%)";
                 });
             };
-
+            _watcher.IndexProgress += progressHandler;
+            _watcher.MarkDriveRemoved(drive.MountPath);
+            System.Diagnostics.Debug.WriteLine($"ReindexButton: {drive.Label} — Connected: {drive.IsConnected} — Indexed: {drive.IsFullyIndexed}");
             var indexTask = Task.Run(() => _watcher.IndexDriveFull(drive));
             dialog.ShowAsync();
             await indexTask;
             dialog.Hide();
+            // ✅ Handler remove చేయండి
+            _watcher.IndexProgress -= progressHandler;
             LoadData();
         }
 
