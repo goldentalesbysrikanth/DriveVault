@@ -76,6 +76,7 @@ final class AppStore: ObservableObject {
     // Tracks drives where user declined the index prompt this session.
     // These are removed from the app when disconnected and re-prompted when reconnected.
     private var declinedDrives = Set<String>()
+    private var loggedConnectThisSession = Set<String>()
 
     // Debounce reload — prevents rapid-fire DB hits
     private var reloadTask: Task<Void, Never>? = nil
@@ -117,6 +118,7 @@ final class AppStore: ObservableObject {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             self.forceScanAllVolumes()
+            self.startWatchersForConnectedDrives()
         }
 
         setupDrivePolling()
@@ -130,6 +132,27 @@ final class AppStore: ObservableObject {
               !name.hasPrefix("com.apple"),
               name != "/" else { return false }
         return true
+    }
+
+    private func startWatchersForConnectedDrives() {
+        guard let mounts = FileManager.default.mountedVolumeURLs(
+            includingResourceValuesForKeys: nil, options: .skipHiddenVolumes
+        ) else { return }
+        for url in mounts {
+            let name = url.lastPathComponent
+            guard isValidDriveName(name) else { continue }
+            guard !db.isDriveFirstIndex(id: name) else { continue }
+            let volumeURL = url
+            Task {
+                await indexEngine.startWatching(volumeURL: volumeURL) {
+                    Task { @MainActor in
+                        guard !self.indexingState.isIndexing else { return }
+                        print("📂 FSEvents: change on \(name) — queuing re-scan")
+                        self.indexDrive(volumeURL, force: true)
+                    }
+                }
+            }
+        }
     }
 
     private func setupDrivePolling() {
@@ -241,12 +264,17 @@ final class AppStore: ObservableObject {
 
         seenThisSession.insert(volumeName)
         print("✅ proceeding for: \(volumeName)")
-        logAppEvent(.driveConnected, detail: volumeName)
+        // Only log drive connected once per session per drive
+        if !loggedConnectThisSession.contains(volumeName) {
+            loggedConnectThisSession.insert(volumeName)
+            logAppEvent(.driveConnected, detail: volumeName)
+        }
 
         // Only prompt/index if drive has never been indexed
         let isFirstIndex = db.isDriveFirstIndex(id: volumeName)
         if !isFirstIndex && !declinedDrives.contains(volumeName) {
-            print("✅ already indexed, skipping prompt for: \(volumeName)")
+            print("✅ already indexed, starting watcher + incremental index for: \(volumeName)")
+            indexDrive(volumeURL, force: true)
             return
         }
 
@@ -310,6 +338,7 @@ final class AppStore: ObservableObject {
         }
         Task { await indexEngine.stopWatching(volumeURL: URL(fileURLWithPath: "/Volumes/\(serial)")) }
         seenThisSession.remove(serial)
+        loggedConnectThisSession.remove(serial)
         logAppEvent(.driveDisconnected, detail: serial)
         reload()
     }
@@ -348,7 +377,10 @@ final class AppStore: ObservableObject {
             await MainActor.run {
                 self.indexingState = IndexingState()
                 self.db.markDriveOnline(serial: serial)
-                self.reloadImmediate()
+                // Delay reload to let background DB writes commit
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.reloadImmediate()
+                }
                 // Start FSEvents watcher — but only re-index if NOT currently indexing
                 // and debounce to avoid re-indexing during large file copies
                 Task {

@@ -135,6 +135,26 @@ actor IndexEngine {
                          fileCount: $0.fileCount, parentID: $0.parentID,
                          depth: Int64($0.depth), fileTypes: $0.fileTypes)
                     })
+                    // Log the update if size or folder count changed
+                    let newRootCount = subfolders.filter { $0.depth == 0 }.count
+                    let oldRootCount = self.db.fetchFolders(for: existing.id).filter { $0.depth == 0 }.count
+                    let updateRootFolders = subfolders.filter { $0.depth == 0 }
+                    let updateFileCount = updateRootFolders.reduce(0) { $0 + $1.fileCount }
+                    if (newTotal != existing.totalBytes || newRootCount != oldRootCount) && updateFileCount > 0 {
+                        // Build type string from fileTypes stored on root folders
+                        let typeStr = updateRootFolders
+                            .compactMap { $0.fileTypes }
+                            .first ?? ""
+                        let subtitle = typeStr.isEmpty
+                            ? "\(updateFileCount) files · \(serial)"
+                            : "\(typeStr) · \(serial)"
+                        db.logActivityWithDate(
+                            kind: .folderAdded,
+                            title: "\(r.name.replacingOccurrences(of: "_", with: " ")) updated",
+                            subtitle: subtitle,
+                            date: now
+                        )
+                    }
 
                 case .insert(let subfolders, let newTotal, let createdDate):
                     let alreadyExists = db.existingShootNames(for: serial)[r.name] != nil
@@ -145,13 +165,30 @@ actor IndexEngine {
                          fileCount: $0.fileCount, parentID: $0.parentID,
                          depth: Int64($0.depth), fileTypes: $0.fileTypes)
                     })
-                    if !alreadyExists {
-                        let totalFiles = subfolders.filter { $0.depth == 0 }
-                            .reduce(0) { $0 + $1.fileCount }
+                    let rootFolders = subfolders.filter { $0.depth == 0 }
+                    let totalFiles = rootFolders.reduce(0) { $0 + $1.fileCount }
+                    if !alreadyExists && totalFiles > 0 {
+                        let totalFiles  = rootFolders.reduce(0) { $0 + $1.fileCount }
+                        // Build type summary from stored fileTypes on root folders
+                        var typeCounts: [String: Int] = [:]
+                        for folder in rootFolders {
+                            guard let types = folder.fileTypes else { continue }
+                            for part in types.split(separator: "·").map({ $0.trimmingCharacters(in: .whitespaces) }) {
+                                let pieces = part.split(separator: " ")
+                                if pieces.count == 2, let n = Int(pieces[0]) {
+                                    typeCounts[String(pieces[1]), default: 0] += n
+                                }
+                            }
+                        }
+                        let typeStr = typeCounts.sorted { $0.value > $1.value }.prefix(4)
+                            .map { "\($0.value) \($0.key)" }.joined(separator: " · ")
+                        let subtitle = typeStr.isEmpty
+                            ? "\(totalFiles) files added to \(serial)"
+                            : "\(typeStr) · \(serial)"
                         db.logActivityWithDate(
                             kind: .folderAdded,
                             title: "\(r.name.replacingOccurrences(of: "_", with: " ")) added",
-                            subtitle: "\(totalFiles) files · \(serial)",
+                            subtitle: subtitle,
                             date: createdDate
                         )
                     }
@@ -159,14 +196,30 @@ actor IndexEngine {
             }
         }
 
-        for (name, existing) in existingShootMap where !scannedNames.contains(name) {
-            db.deleteShoot(id: existing.id)
-            db.logActivityWithDate(
-                kind: .folderRemoved,
-                title: "\(name.replacingOccurrences(of: "_", with: " ")) removed",
-                subtitle: "Removed from \(serial)",
-                date: existing.scannedAt
-            )
+        // Detect deletions and renames
+        let removedNames = Set(existingShootMap.keys).subtracting(scannedNames)
+        let addedNames   = scannedNames.subtracting(Set(existingShootMap.keys))
+
+        for name in removedNames {
+            guard let existing = existingShootMap[name] else { continue }
+            if removedNames.count == 1 && addedNames.count == 1,
+               let newName = addedNames.first {
+                db.deleteShoot(id: existing.id)
+                db.logActivityWithDate(
+                    kind: .folderAdded,
+                    title: "\(name.replacingOccurrences(of: "_", with: " ")) renamed to \(newName.replacingOccurrences(of: "_", with: " "))",
+                    subtitle: "Renamed on \(serial)",
+                    date: now
+                )
+            } else {
+                db.deleteShoot(id: existing.id)
+                db.logActivityWithDate(
+                    kind: .folderRemoved,
+                    title: "\(name.replacingOccurrences(of: "_", with: " ")) removed",
+                    subtitle: "Removed from \(serial)",
+                    date: existing.scannedAt
+                )
+            }
         }
     }
 
@@ -182,21 +235,13 @@ actor IndexEngine {
         let createdDate = folderCreationDate(itemURL) ?? now
 
         if let existing = existingShootMap[name] {
-            let hasFileCounts = db.fetchFolders(for: existing.id).contains { $0.fileCount > 0 }
-            if hasFileCounts {
-                if let mod = folderModDate(itemURL), mod <= existing.scannedAt {
-                    db.updateShootScanDate(id: existing.id, scannedAt: now)
-                    db.updateShootCreatedAt(id: existing.id, createdAt: createdDate)
-                    return ShootResult(name: name, itemURL: itemURL, action: .skip)
-                }
-                let itemCount   = quickItemCount(itemURL)
-                let storedCount = db.fetchFolders(for: existing.id).filter { $0.depth == 0 }.count
-                if itemCount == storedCount && itemCount > 0 {
-                    db.updateShootScanDate(id: existing.id, scannedAt: now)
-                    db.updateShootCreatedAt(id: existing.id, createdAt: createdDate)
-                    return ShootResult(name: name, itemURL: itemURL, action: .skip)
-                }
+            // Only skip if mod date hasn't changed — catches file additions/deletions
+            if let mod = folderModDate(itemURL), mod <= existing.scannedAt {
+                db.updateShootScanDate(id: existing.id, scannedAt: now)
+                db.updateShootCreatedAt(id: existing.id, createdAt: createdDate)
+                return ShootResult(name: name, itemURL: itemURL, action: .skip)
             }
+            // Mod date changed — re-scan this shoot
         }
 
         let subfolders = await scanSubfolders(of: itemURL, scannedAt: now)
@@ -385,7 +430,8 @@ final class DriveWatcher {
     private let onChange: () -> Void
     private var stream: FSEventStreamRef?
     private var debounceTimer: Timer?
-    private let debounceInterval: TimeInterval = 3.0
+    private var maxTimer: Timer?
+    private let debounceInterval: TimeInterval = 10.0
 
     init(url: URL, onChange: @escaping () -> Void) {
         self.url = url
@@ -416,6 +462,7 @@ final class DriveWatcher {
 
     func stop() {
         debounceTimer?.invalidate(); debounceTimer = nil
+        maxTimer?.invalidate(); maxTimer = nil
         if let stream {
             FSEventStreamStop(stream); FSEventStreamInvalidate(stream)
             FSEventStreamRelease(stream); self.stream = nil
@@ -425,10 +472,26 @@ final class DriveWatcher {
     private func scheduleDebounced() {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            // Reset debounce — fires 10s after last change
             self.debounceTimer?.invalidate()
             self.debounceTimer = Timer.scheduledTimer(
                 withTimeInterval: self.debounceInterval, repeats: false
-            ) { [weak self] _ in self?.onChange() }
+            ) { [weak self] _ in
+                self?.maxTimer?.invalidate()
+                self?.maxTimer = nil
+                self?.onChange()
+            }
+            // Max timer — fires after 30s regardless of ongoing changes
+            if self.maxTimer == nil {
+                self.maxTimer = Timer.scheduledTimer(
+                    withTimeInterval: 30.0, repeats: false
+                ) { [weak self] _ in
+                    self?.debounceTimer?.invalidate()
+                    self?.debounceTimer = nil
+                    self?.maxTimer = nil
+                    self?.onChange()
+                }
+            }
         }
     }
 }

@@ -8,12 +8,17 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Logo
             HStack(spacing: 8) {
-                Image("AppIcon")
+                Image("AppIconImage")
                     .resizable()
                     .frame(width: 24, height: 24)
                     .clipShape(RoundedRectangle(cornerRadius: 5))
-                Text("Drive Vault")
-                    .font(.system(size: 15, weight: .medium))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Drive Vault")
+                        .font(.system(size: 15, weight: .medium))
+                    Text("v1.2.2 Beta")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)

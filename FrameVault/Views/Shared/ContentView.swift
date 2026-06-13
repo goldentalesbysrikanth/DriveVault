@@ -35,7 +35,16 @@ struct ContentView: View {
             case .drives:    DrivesView()
             case .library:   LibraryView()
             case .clients:   ClientsView()
-            case .activity:  PasscodeGate(actionTitle: "Activity Log") { ActivityLogView() }
+            case .activity:
+                PasscodeGate(actionTitle: "Activity Log") { ActivityLogView() }
+                    .toolbar {
+                        ToolbarItem(placement: .automatic) {
+                            Button { store.reload() } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .help("Refresh activity log")
+                        }
+                    }
             case .settings:  SettingsView()
             }
         }

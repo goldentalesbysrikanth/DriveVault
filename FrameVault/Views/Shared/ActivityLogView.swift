@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import UniformTypeIdentifiers
 
 // MARK: - AppEvent Kind
@@ -241,6 +242,10 @@ struct ActivityLogView: View {
                     .padding(.vertical, 8)
                 }
             }
+        }
+        .onAppear { store.reload() }
+        .onReceive(Timer.publish(every: 10, on: .main, in: .common).autoconnect()) { _ in
+            store.reload()
         }
         .navigationTitle("Activity Log")
         .toolbar {
