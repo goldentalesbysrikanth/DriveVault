@@ -342,28 +342,17 @@ struct ActivityLogView: View {
     }
 
     private func makePDFExport() -> ExportFile {
-        var html = """
-        <html><head><style>
-        body { font-family: -apple-system, sans-serif; margin: 40px; color: #1a1a1a; }
-        h1 { font-size: 22px; margin-bottom: 4px; }
-        .sub { color: #888; font-size: 13px; margin-bottom: 24px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; padding: 8px 12px; background: #f5f5f7; border-bottom: 1px solid #e0e0e0; }
-        td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
-        .kind { font-weight: 600; }
-        .detail { color: #555; }
-        </style></head><body>
-        <h1>Drive Vault — Activity Log</h1>
-        <div class="sub">Exported \(Date().formatted(date: .long, time: .shortened)) · \(filtered.count) events</div>
-        <table><tr><th>Date</th><th>Time</th><th>Event</th><th>Detail</th></tr>
-        """
-        for event in filtered {
-            let date   = event.occurredAt.formatted(date: .abbreviated, time: .omitted)
-            let time   = event.occurredAt.formatted(date: .omitted, time: .shortened)
-            html += "<tr><td>\(date)</td><td>\(time)</td><td class='kind'>\(event.title)</td><td class='detail'>\(event.subtitle)</td></tr>"
+        let subtitle = "Exported \(Date().formatted(date: .long, time: .shortened)) · \(filtered.count) events"
+        let rows = filtered.map { event -> (date: String, time: String, event: String, detail: String) in
+            (
+                date:   event.occurredAt.formatted(date: .abbreviated, time: .omitted),
+                time:   event.occurredAt.formatted(date: .omitted, time: .shortened),
+                event:  event.title,
+                detail: event.subtitle
+            )
         }
-        html += "</table></body></html>"
-        return ExportFile(htmlContent: html)
+        let data = ExportFile.drawPDF(events: rows, subtitle: subtitle)
+        return ExportFile(rawData: data)
     }
 
     private func dateStamp() -> String {
@@ -380,105 +369,126 @@ struct ExportFile: FileDocument {
     let data: Data
     let type: UTType
 
-    // CSV init
     init(csvContent: String) {
         self.data = csvContent.data(using: .utf8) ?? Data()
         self.type = .commaSeparatedText
     }
 
-    // PDF init — renders HTML to real PDF using WebKit
-    init(htmlContent: String) {
-        self.data = ExportFile.renderHTMLtoPDF(htmlContent)
+    init(rawData: Data) {
+        self.data = rawData
         self.type = .pdf
     }
 
     init(configuration: ReadConfiguration) throws {
-        data = Data()
-        type = .plainText
+        data = Data(); type = .plainText
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
     }
 
-    // MARK: HTML → PDF via NSPrintOperation + WKWebView
+    // MARK: - Clean PDF generation with CoreGraphics
 
-    static func renderHTMLtoPDF(_ html: String) -> Data {
-        // Use NSAttributedString HTML rendering for a lightweight real PDF
-        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue
-        ]
-        guard
-            let htmlData = html.data(using: .utf8),
-            let attrStr = try? NSAttributedString(data: htmlData, options: options, documentAttributes: nil)
-        else {
-            return html.data(using: .utf8) ?? Data()
-        }
-
-        let printInfo = NSPrintInfo.shared.copy() as! NSPrintInfo
-        printInfo.paperSize = NSSize(width: 595, height: 842) // A4
-        printInfo.leftMargin   = 40
-        printInfo.rightMargin  = 40
-        printInfo.topMargin    = 40
-        printInfo.bottomMargin = 40
-        printInfo.horizontalPagination = .fit
-        printInfo.verticalPagination   = .automatic
-        printInfo.isHorizontallyCentered = false
-        printInfo.isVerticallyCentered   = false
-
-        let container = NSTextContainer(size: CGSize(
-            width: printInfo.paperSize.width - printInfo.leftMargin - printInfo.rightMargin,
-            height: .greatestFiniteMagnitude
-        ))
-        let layoutMgr = NSLayoutManager()
-        let textStorage = NSTextStorage(attributedString: attrStr)
-        textStorage.addLayoutManager(layoutMgr)
-        layoutMgr.addTextContainer(container)
-
-        // Paginate
-        var pageRanges: [NSRange] = []
-        let pageHeight = printInfo.paperSize.height - printInfo.topMargin - printInfo.bottomMargin
-        var glyphIdx = 0
-        let totalGlyphs = layoutMgr.numberOfGlyphs
-        while glyphIdx < totalGlyphs {
-            var lineRange = NSRange()
-            layoutMgr.lineFragmentRect(forGlyphAt: glyphIdx, effectiveRange: &lineRange)
-            var rangeEnd = lineRange.upperBound
-            var usedHeight: CGFloat = 0
-            var scanIdx = glyphIdx
-            while scanIdx < totalGlyphs {
-                var fragRange = NSRange()
-                let rect = layoutMgr.lineFragmentRect(forGlyphAt: scanIdx, effectiveRange: &fragRange)
-                if usedHeight + rect.height > pageHeight { break }
-                usedHeight += rect.height
-                scanIdx = fragRange.upperBound
-                rangeEnd = scanIdx
-            }
-            pageRanges.append(NSRange(location: glyphIdx, length: rangeEnd - glyphIdx))
-            glyphIdx = rangeEnd
-        }
-        if pageRanges.isEmpty {
-            pageRanges = [NSRange(location: 0, length: totalGlyphs)]
-        }
+    static func drawPDF(events: [(date: String, time: String, event: String, detail: String)], subtitle: String) -> Data {
+        let pageW: CGFloat = 612   // US Letter
+        let pageH: CGFloat = 792
+        let margin: CGFloat = 44
+        let colW: [CGFloat] = [80, 52, 130, pageW - margin * 2 - 80 - 52 - 130]
+        let rowH: CGFloat = 20
+        let headerH: CGFloat = rowH
 
         let pdfData = NSMutableData()
-        var mediaBox = CGRect(origin: .zero, size: printInfo.paperSize)
-        guard let ctx = CGContext(consumer: CGDataConsumer(data: pdfData)!, mediaBox: &mediaBox, nil) else {
-            return html.data(using: .utf8) ?? Data()
+        var mediaBox = CGRect(x: 0, y: 0, width: pageW, height: pageH)
+        guard let ctx = CGContext(consumer: CGDataConsumer(data: pdfData as CFMutableData)!,
+                                  mediaBox: &mediaBox, nil) else { return Data() }
+
+        let titleFont  = CTFontCreateWithName("Helvetica-Bold" as CFString, 17, nil)
+        let subFont    = CTFontCreateWithName("Helvetica" as CFString, 10, nil)
+        let hdrFont    = CTFontCreateWithName("Helvetica-Bold" as CFString, 9, nil)
+        let cellFont   = CTFontCreateWithName("Helvetica" as CFString, 9, nil)
+        let grayColor  = CGColor(gray: 0.45, alpha: 1)
+        let darkColor  = CGColor(gray: 0.1, alpha: 1)
+        let lineColor  = CGColor(gray: 0.85, alpha: 1)
+        let hdrBg      = CGColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 1)
+        let altBg      = CGColor(red: 0.975, green: 0.975, blue: 0.985, alpha: 1)
+
+        func drawStr(_ text: String, font: CTFont, color: CGColor = CGColor(gray: 0.1, alpha: 1),
+                     x: CGFloat, y: CGFloat, width: CGFloat) {
+            let para = NSMutableParagraphStyle()
+            para.lineBreakMode = .byTruncatingTail
+            let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: para]
+            let str = NSAttributedString(string: text, attributes: attrs)
+            let fs  = CTFramesetterCreateWithAttributedString(str)
+            let path = CGPath(rect: CGRect(x: x, y: y, width: width - 4, height: rowH), transform: nil)
+            let frame = CTFramesetterCreateFrame(fs, CFRangeMake(0, 0), path, nil)
+            ctx.saveGState(); CTFrameDraw(frame, ctx); ctx.restoreGState()
         }
 
-        let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: false)
+        func hline(y: CGFloat) {
+            ctx.setStrokeColor(lineColor); ctx.setLineWidth(0.4)
+            ctx.move(to: CGPoint(x: margin, y: y))
+            ctx.addLine(to: CGPoint(x: pageW - margin, y: y))
+            ctx.strokePath()
+        }
 
-        for range in pageRanges {
+        var y: CGFloat = 0
+        var pageIdx = 0
+        var rowIdx = 0
+
+        func newPage() {
             ctx.beginPDFPage(nil)
-            NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current = nsCtx
-            let origin = CGPoint(x: printInfo.leftMargin, y: printInfo.bottomMargin)
-            layoutMgr.drawGlyphs(forGlyphRange: range, at: origin)
-            NSGraphicsContext.restoreGraphicsState()
-            ctx.endPDFPage()
+            pageIdx += 1
+            y = pageH - margin
+
+            if pageIdx == 1 {
+                // Title
+                drawStr("Drive Vault — Activity Log", font: titleFont, x: margin, y: y - 20, width: pageW - margin * 2)
+                y -= 26
+                drawStr(subtitle, font: subFont, color: grayColor, x: margin, y: y - 14, width: pageW - margin * 2)
+                y -= 22
+                hline(y: y)
+                y -= 4
+            }
+
+            // Column headers
+            ctx.setFillColor(hdrBg)
+            ctx.fill(CGRect(x: margin, y: y - headerH, width: pageW - margin * 2, height: headerH))
+            var x = margin + 4
+            for (i, h) in ["DATE", "TIME", "EVENT", "DETAIL"].enumerated() {
+                drawStr(h, font: hdrFont, color: grayColor, x: x, y: y - headerH + 5, width: colW[i])
+                x += colW[i]
+            }
+            y -= headerH
+            hline(y: y)
+            rowIdx = 0
         }
+
+        newPage()
+
+        for row in events {
+            if y - rowH < margin + 20 { ctx.endPDFPage(); newPage() }
+
+            if rowIdx % 2 == 1 {
+                ctx.setFillColor(altBg)
+                ctx.fill(CGRect(x: margin, y: y - rowH, width: pageW - margin * 2, height: rowH))
+            }
+
+            var x = margin + 4
+            let cols = [row.date, row.time, row.event, row.detail]
+            for (i, col) in cols.enumerated() {
+                drawStr(col, font: cellFont, color: i == 2 ? darkColor : (i == 3 ? grayColor : darkColor),
+                        x: x, y: y - rowH + 5, width: colW[i])
+                x += colW[i]
+            }
+            hline(y: y - rowH)
+            y -= rowH
+            rowIdx += 1
+        }
+
+        // Footer
+        drawStr("Drive Vault  ·  Page \(pageIdx)", font: subFont, color: grayColor,
+                x: margin, y: margin - 16, width: pageW - margin * 2)
+        ctx.endPDFPage()
         ctx.closePDF()
         return pdfData as Data
     }

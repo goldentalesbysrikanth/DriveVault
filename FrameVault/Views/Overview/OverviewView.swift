@@ -302,48 +302,96 @@ struct OverviewView: View {
     @State private var showShootDetail = false
 
     private var searchResults: some View {
-        let q            = searchText.lowercased()
+        let q = searchText.lowercased()
         let driveMap = Dictionary(uniqueKeysWithValues: store.drives.map { ($0.id, $0) })
-        let nameResults  = store.shoots.filter { $0.name.lowercased().contains(q) }
-        let driveResults = store.shoots.filter {
-            $0.driveID.lowercased().contains(q) ||
-            (driveMap[$0.driveID]?.name.lowercased().contains(q) ?? false)
+
+        // Search shoots by name or drive name
+        var seen = Set<Int64>()
+        var shootResults: [Shoot] = []
+        for s in store.shoots {
+            let matchesName  = s.name.lowercased().contains(q)
+            let matchesDrive = s.driveID.lowercased().contains(q) ||
+                               (driveMap[s.driveID]?.name.lowercased().contains(q) ?? false)
+            if (matchesName || matchesDrive) && seen.insert(s.id).inserted {
+                shootResults.append(s)
+            }
         }
 
-        var seen = Set<Int64>()
-        var results: [Shoot] = []
-        for s in (nameResults + driveResults) {
-            if seen.insert(s.id).inserted { results.append(s) }
-        }
+        // Search drives by name
+        let driveResults = store.drives.filter { $0.name.lowercased().contains(q) }
+
+        let totalResults = shootResults.count + driveResults.count
 
         return Group {
-            if results.isEmpty {
+            if totalResults == 0 {
                 ContentUnavailableView.search(text: searchText)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(results) { shoot in
-                            SearchResultRow(
-                                shoot: shoot,
-                                drive: driveMap[shoot.driveID],
-                                onTap: {
-                                    selectedSearchShoot = shoot
-                                    showShootDetail = true
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        // Drives section
+                        if !driveResults.isEmpty {
+                            Text("DRIVES")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.tertiary)
+                                .tracking(0.5)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 12)
+                                .padding(.bottom, 4)
+                            ForEach(driveResults) { drive in
+                                Button { selection = .drives } label: {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(.purple.opacity(0.1))
+                                                .frame(width: 28, height: 28)
+                                            Image(systemName: "externaldrive")
+                                                .foregroundStyle(.purple)
+                                                .font(.system(size: 12))
+                                        }
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(drive.name).font(.system(size: 13, weight: .medium))
+                                            Text(drive.isOnline ? "Online" : "Offline")
+                                                .font(.caption).foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        if let total = drive.totalBytes {
+                                            Text(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))
+                                                .font(.caption).foregroundStyle(.tertiary)
+                                        }
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 11)).foregroundStyle(.tertiary)
+                                    }
+                                    .padding(.horizontal, 16).padding(.vertical, 8)
+                                    .contentShape(Rectangle())
                                 }
-                            )
-                            Divider()
+                                .buttonStyle(.plain)
+                                Divider()
+                            }
+                        }
+
+                        // Folders section
+                        if !shootResults.isEmpty {
+                            Text("FOLDERS")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.tertiary)
+                                .tracking(0.5)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 12)
+                                .padding(.bottom, 4)
+                            ForEach(shootResults) { shoot in
+                                SearchResultRow(
+                                    shoot: shoot,
+                                    drive: driveMap[shoot.driveID],
+                                    onTap: {
+                                        selection = .library
+                                    }
+                                )
+                                Divider()
+                            }
                         }
                     }
                 }
-                .sheet(isPresented: $showShootDetail) {
-                    if let shoot = selectedSearchShoot {
-                        SearchShootDetailSheet(
-                            shoot: shoot,
-                            drive: driveMap[shoot.driveID]
-                        )
-                        .environmentObject(store)
-                    }
-                }
+
             }
         }
     }
@@ -691,7 +739,7 @@ struct SearchShootDetailSheet: View {
                 }
             }
         }
-        .frame(width: 520, height: 480)
+        .frame(width: 580, height: 520)
     }
 }
 
