@@ -147,7 +147,7 @@ struct ActivityLogView: View {
     // MARK: Stats
     private var totalEvents: Int    { filtered.count }
     private var reindexCount: Int   { filtered.filter { $0.kind == .reindexed }.count }
-    private var connectedCount: Int { filtered.filter { $0.kind == .driveConnected }.count }
+    private var connectedCount: Int { Set(filtered.filter { $0.kind == .driveConnected }.map { $0.subtitle }).count }
     private var removedCount: Int   { filtered.filter { $0.kind == .folderRemoved }.count }
 
     var body: some View {

@@ -37,11 +37,21 @@ struct ContentView: View {
             case .clients:   ClientsView()
             case .activity:
                 PasscodeGate(actionTitle: "Activity Log") { ActivityLogView() }
+                    .toolbarRole(.editor)
                     .toolbar {
                         ToolbarItem(placement: .automatic) {
-                            Button { store.reload() } label: {
-                                Image(systemName: "arrow.clockwise")
+                            Button {
+                                store.reload()
+                            } label: {
+                                Text("Refresh")
+                                    .font(.system(size: 12))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.purple.opacity(0.12))
+                                    .foregroundStyle(.purple)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
                             }
+                            .buttonStyle(.plain)
                             .help("Refresh activity log")
                         }
                     }

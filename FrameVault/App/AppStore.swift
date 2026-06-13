@@ -299,7 +299,7 @@ final class AppStore: ObservableObject {
             let name = url.lastPathComponent
             declinedDrives.insert(name)
             print("⏭ Index declined for: \(name) — will vanish on disconnect")
-            logAppEvent(.settingsChanged, detail: "Index skipped for \(name)")
+            logAppEvent(.indexSkipped, detail: "Index skipped for \(name)")
         }
         pendingIndexURL = nil
         showIndexPrompt = false
@@ -380,6 +380,7 @@ final class AppStore: ObservableObject {
                 self.indexingState = IndexingState()
                 self.db.markDriveOnline(serial: serial)
                 // Delay reload to let background DB writes commit
+                self.logAppEvent(.indexComplete, detail: self.db.isDriveFirstIndex(id: serial) ? "\(serial) — Full index complete" : "\(serial) — Incremental index complete")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.reloadImmediate()
                 }
