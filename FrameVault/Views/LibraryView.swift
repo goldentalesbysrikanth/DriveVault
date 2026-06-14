@@ -80,11 +80,12 @@ struct LibraryView: View {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                 Section(header: tableHeader) {
                     ForEach(filteredShoots) { shoot in
+                        let isExpanded = expandedShootID == shoot.id
                         LibraryTableRow(
                             shoot: shoot,
                             drive: driveMap[shoot.driveID],
-                            folders: store.folders(for: shoot),
-                            isExpanded: expandedShootID == shoot.id,
+                            folders: isExpanded ? store.folders(for: shoot) : [],
+                            isExpanded: isExpanded,
                             onTap: { selectedShoot = shoot },
                             onExpand: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {

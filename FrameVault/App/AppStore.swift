@@ -52,6 +52,7 @@ final class AppStore: ObservableObject {
     @Published var shoots: [Shoot] = []
     @Published var alerts: [AppAlert] = []
     @Published var workflows: [ClientWorkflow] = []
+    @Published var clientGroups: [ClientGroup] = []
     @Published var recentActivity: [ActivityEvent] = []
     @Published var allFolders: [DriveFolder] = []
     @Published var indexingState = IndexingState()
@@ -181,12 +182,30 @@ final class AppStore: ObservableObject {
 
     private func reloadImmediate() {
         guard !isResetting else { return }
-        drives         = db.fetchAllDrives()
-        shoots         = db.fetchAllShoots()
-        recentActivity = db.fetchRecentActivity(limit: 100)
-        appEvents      = db.fetchAppEvents()
-        workflows      = db.fetchAllWorkflows()
-        refreshAlerts()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self, !self.isResetting else { return }
+            let d  = self.db.fetchAllDrives()
+            let s  = self.db.fetchAllShoots()
+            let ra = self.db.fetchRecentActivity(limit: 100)
+            let ae = self.db.fetchAppEvents()
+            let wf = self.db.fetchAllWorkflows()
+            let cg = self.buildClientGroups(from: s)
+            DispatchQueue.main.async {
+                guard !self.isResetting else { return }
+                self.drives         = d
+                self.shoots         = s
+                self.clientGroups   = cg
+                self.recentActivity = ra
+                self.appEvents      = ae
+                self.workflows      = wf
+                self.refreshAlerts()
+            }
+        }
+    }
+
+    private func buildClientGroups(from shoots: [Shoot]) -> [ClientGroup] {
+        let grouped = Dictionary(grouping: shoots) { ClientGroup.rootKey(from: $0.name) }
+        return grouped.map { ClientGroup(key: $0.key, shoots: $0.value) }.sorted { $0.key < $1.key }
     }
 
     // MARK: Drive Monitoring
@@ -565,8 +584,5 @@ final class AppStore: ObservableObject {
         db.fetchFolders(for: shoot.id)
     }
 
-    var clientGroups: [ClientGroup] {
-        let grouped = Dictionary(grouping: shoots) { ClientGroup.rootKey(from: $0.name) }
-        return grouped.map { ClientGroup(key: $0.key, shoots: $0.value) }.sorted { $0.key < $1.key }
-    }
+
 }
