@@ -15,7 +15,7 @@ struct SidebarView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Drive Vault")
                         .font(.system(size: 15, weight: .medium))
-                    Text("v1.2.2 Beta")
+                    Text("v1.3.0 — Test Version")
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                 }
