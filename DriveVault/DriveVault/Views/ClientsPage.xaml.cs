@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Windows.UI;
 
 namespace DriveVault.Views
@@ -32,7 +33,6 @@ namespace DriveVault.Views
         {
             this.InitializeComponent();
 
-            // ✅ Sort options
             SortComboBox.ItemsSource = new List<string>
             {
                 "Name (A-Z)",
@@ -130,30 +130,119 @@ namespace DriveVault.Views
             RefreshWorkflowList(_allWorkflows);
         }
 
+        // Called from global search — matches by FolderName
+        public void LoadDataByName(string folderName)
+        {
+            var folders = DatabaseHelper.GetAllFolders();
+            var drives = DatabaseHelper.GetAllDrives();
+            var workflows = DatabaseHelper.GetAllWorkflows();
+
+            var clientGroups = folders
+                .GroupBy(f => f.FolderName)
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            _allClients = clientGroups.Select(g =>
+            {
+                var best = g.OrderByDescending(f =>
+                {
+                    var d = drives.FirstOrDefault(d => d.Id == f.DriveId);
+                    return d?.IsConnected == true ? 1 : 0;
+                }).First();
+
+                var drive = drives.FirstOrDefault(d => d.Id == best.DriveId);
+                var wf = workflows.FirstOrDefault(w => w.ClientName == g.Key);
+                var hasWf = wf != null;
+                var totalSize = g.Sum(f => f.SizeBytes);
+                var shootCount = g.Count();
+
+                return new ClientViewModel
+                {
+                    FolderId = best.Id,
+                    FolderName = g.Key,
+                    TotalSizeBytes = totalSize,
+                    SizeDisplay = FormatSize(totalSize),
+                    DriveName = drive?.Label ?? "Unknown",
+                    DriveId = drive?.Id ?? "",
+                    SubInfo = $"{shootCount} shoot{(shootCount != 1 ? "s" : "")} · {FormatSize(totalSize)}",
+                    Initials = GetInitials(g.Key),
+                    HasWorkflow = hasWf,
+                    WorkflowProgress = wf?.ProgressPercent ?? 0,
+                    NeedsWorkflowPrompt = !hasWf && totalSize >= 500L * 1024 * 1024 * 1024,
+                    WorkflowBadgeText = hasWf ? $"{wf!.ProgressDisplay}" : "+ Workflow",
+                    WorkflowBadgeColor = hasWf ? "#FF7C3AED" : "#FF6B7280",
+                    IsHighlighted = string.Equals(g.Key, folderName,
+                                            StringComparison.OrdinalIgnoreCase),
+                    ShootCount = shootCount
+                };
+            }).ToList();
+
+            _allWorkflows = _allClients.Select(c =>
+            {
+                var wf = workflows.FirstOrDefault(w => w.ClientName == c.FolderName);
+                return BuildWorkflowViewModel(c, wf);
+            }).ToList();
+
+            TotalClientsText.Text = _allClients.Count.ToString();
+            TotalSizeText.Text = FormatSize(_allClients.Sum(c => c.TotalSizeBytes));
+            DrivesUsedText.Text = _allClients
+                .Select(c => c.DriveName).Distinct().Count().ToString();
+            WorkflowCountText.Text = _allClients.Count(c => c.HasWorkflow).ToString();
+
+            var target = _allClients.FirstOrDefault(c =>
+                string.Equals(c.FolderName, folderName,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (target != null)
+            {
+                var reordered = new List<ClientViewModel> { target };
+                reordered.AddRange(_allClients.Where(c =>
+                    !string.Equals(c.FolderName, folderName,
+                        StringComparison.OrdinalIgnoreCase)));
+                RefreshClientList(reordered, target.FolderId);
+                RefreshWorkflowList(_allWorkflows);
+            }
+            else
+            {
+                RefreshClientList(_allClients);
+                RefreshWorkflowList(_allWorkflows);
+            }
+        }
+
+        // Skip sort when highlighting so item stays at position 0
         private void RefreshClientList(List<ClientViewModel> clients,
             string? highlightFolderId = null)
         {
-            // ✅ Sort apply చేయండి
-            var sorted = _currentSort switch
+            List<ClientViewModel> sorted;
+
+            if (!string.IsNullOrEmpty(highlightFolderId))
             {
-                "Name (Z-A)" => clients.OrderByDescending(c => c.FolderName).ToList(),
-                "Drive Name" => clients.OrderBy(c => c.DriveName)
-                                             .ThenBy(c => c.FolderName).ToList(),
-                "Size (Largest)" => clients.OrderByDescending(c => c.TotalSizeBytes).ToList(),
-                "Size (Smallest)" => clients.OrderBy(c => c.TotalSizeBytes).ToList(),
-                "Shoots (Most)" => clients.OrderByDescending(c => c.ShootCount).ToList(),
-                "Shoots (Least)" => clients.OrderBy(c => c.ShootCount).ToList(),
-                _ => clients.OrderBy(c => c.FolderName).ToList()
-            };
+                sorted = clients;
+            }
+            else
+            {
+                sorted = _currentSort switch
+                {
+                    "Name (Z-A)" => clients.OrderByDescending(c => c.FolderName).ToList(),
+                    "Drive Name" => clients.OrderBy(c => c.DriveName)
+                                                .ThenBy(c => c.FolderName).ToList(),
+                    "Size (Largest)" => clients.OrderByDescending(c => c.TotalSizeBytes).ToList(),
+                    "Size (Smallest)" => clients.OrderBy(c => c.TotalSizeBytes).ToList(),
+                    "Shoots (Most)" => clients.OrderByDescending(c => c.ShootCount).ToList(),
+                    "Shoots (Least)" => clients.OrderBy(c => c.ShootCount).ToList(),
+                    _ => clients.OrderBy(c => c.FolderName).ToList()
+                };
+            }
 
             ClientsListView.ItemsSource = sorted;
 
             if (!string.IsNullOrEmpty(highlightFolderId))
             {
-                DispatcherQueue.TryEnqueue(() =>
+                DispatcherQueue.TryEnqueue(async () =>
                 {
                     try
                     {
+                        await Task.Delay(100);
                         if (ClientsListView.Items.Count > 0)
                         {
                             ClientsListView.SelectedIndex = 0;
@@ -182,7 +271,6 @@ namespace DriveVault.Views
             WorkflowListView.ItemsSource = filtered;
         }
 
-        // ✅ Sort ComboBox changed
         private void SortComboBox_SelectionChanged(object sender,
             SelectionChangedEventArgs e)
         {
@@ -266,7 +354,6 @@ namespace DriveVault.Views
 
             var panel = new StackPanel { Spacing = 16 };
 
-            // ─── Info Grid ────────────────────────────────────────
             var infoGrid = new Grid();
             infoGrid.ColumnDefinitions.Add(new ColumnDefinition
             { Width = new GridLength(1, GridUnitType.Star) });
@@ -303,7 +390,6 @@ namespace DriveVault.Views
             panel.Children.Add(infoGrid);
             panel.Children.Add(MakeDivider());
 
-            // ─── Drives used ──────────────────────────────────────
             var drivesUsed = folders
                 .Select(f => drives.FirstOrDefault(d => d.Id == f.DriveId))
                 .Where(d => d != null)
@@ -326,14 +412,12 @@ namespace DriveVault.Views
 
             panel.Children.Add(MakeDivider());
 
-            // ─── Workflow ─────────────────────────────────────────
             if (wf != null)
             {
                 panel.Children.Add(BuildWorkflowReadView(wf));
                 panel.Children.Add(MakeDivider());
             }
 
-            // ─── Shoots + Subfolders ──────────────────────────────
             panel.Children.Add(new TextBlock
             {
                 Text = "Shoots",
@@ -381,17 +465,20 @@ namespace DriveVault.Views
                 shootHeader.Children.Add(shootRight);
                 panel.Children.Add(shootHeader);
 
-                // ✅ Subfolders from DB
                 var allDriveFolders = DatabaseHelper.GetFoldersByDrive(f.DriveId);
+
+                // ✅ CHANGED — use relative path comparison so drive letter
+                // changes (G:\ → H:\) don't break subfolder display
+                var fRel = StripRoot(f.FolderPath);
                 var subFolders = allDriveFolders
                     .Where(sf =>
                     {
-                        if (sf.FolderPath.Equals(f.FolderPath,
+                        var sfRel = StripRoot(sf.FolderPath);
+                        if (sfRel.Equals(fRel,
                             StringComparison.OrdinalIgnoreCase)) return false;
-                        if (!sf.FolderPath.StartsWith(f.FolderPath,
+                        if (!sfRel.StartsWith(fRel,
                             StringComparison.OrdinalIgnoreCase)) return false;
-                        var relative = sf.FolderPath
-                            .Substring(f.FolderPath.Length)
+                        var relative = sfRel.Substring(fRel.Length)
                             .TrimStart('\\', '/');
                         return !string.IsNullOrEmpty(relative) &&
                                !relative.Contains('\\') &&
@@ -500,7 +587,6 @@ namespace DriveVault.Views
 
             panel.Children.Add(MakeDivider());
 
-            // ─── Action buttons ───────────────────────────────────
             var actionRow = new StackPanel
             { Orientation = Orientation.Horizontal, Spacing = 8 };
             ContentDialog? parentDialog = null;
@@ -525,12 +611,6 @@ namespace DriveVault.Views
                 removeBtn.Click += async (s, _) =>
                 {
                     parentDialog?.Hide();
-                    DatabaseHelper.DeleteWorkflow(vm.FolderName);
-                    DatabaseHelper.LogActivity(
-                        "workflow_removed", "", "",
-                        $"Workflow Removed: {vm.FolderName}",
-                        "System");
-                    LoadData();
                     var confirm = new ContentDialog
                     {
                         Title = "Remove Workflow",
@@ -543,10 +623,10 @@ namespace DriveVault.Views
                     if (await confirm.ShowAsync() == ContentDialogResult.Primary)
                     {
                         DatabaseHelper.DeleteWorkflow(vm.FolderName);
-                        // ✅ Workflow remove log
                         DatabaseHelper.LogActivity(
                             "workflow_removed", "", "",
-                            vm.FolderName, "System");
+                            $"Workflow Removed: {vm.FolderName}",
+                            "System");
                         LoadData();
                     }
                 };
@@ -630,10 +710,10 @@ namespace DriveVault.Views
             }
 
             StackPanel MakeSegmentedField(
-    string fieldLabel,
-    string[] options,
-    string currentValue,
-    Action<string> onChanged)
+                string fieldLabel,
+                string[] options,
+                string currentValue,
+                Action<string> onChanged)
             {
                 var container = new StackPanel { Spacing = 8 };
                 container.Children.Add(new TextBlock
@@ -648,7 +728,6 @@ namespace DriveVault.Views
                 var selectedValue = currentValue;
                 var buttons = new List<Button>();
 
-                // ✅ Two rows — 4 buttons each
                 var row1 = new StackPanel
                 { Orientation = Orientation.Horizontal, Spacing = 6 };
                 var row2 = new StackPanel
@@ -730,12 +809,10 @@ namespace DriveVault.Views
                     };
                     buttons.Add(btn);
 
-                    // ✅ First 4 → row1, rest → row2
                     if (i < 4) row1.Children.Add(btn);
                     else row2.Children.Add(btn);
                 }
 
-                // Apply initial styles after all buttons created
                 ApplyAllStyles(selectedValue);
 
                 foreach (var b in buttons)
@@ -921,7 +998,6 @@ namespace DriveVault.Views
 
             DatabaseHelper.SaveWorkflow(wf);
 
-            // ✅ Workflow attach/update log
             DatabaseHelper.LogActivity(
                 isNew ? "workflow_attached" : "workflow_updated",
                 "", "",
@@ -1114,7 +1190,8 @@ namespace DriveVault.Views
 
             string StatusTextColor(string? status)
             {
-                if (status == null || status == "NA" || status == "Not Started")
+                if (status == null || status == "NA" ||
+                    status == "Not Started")
                     return "#FF9CA3AF";
                 return status switch
                 {
@@ -1190,6 +1267,18 @@ namespace DriveVault.Views
                 .Resources["DividerStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(0, 1, 0, 0)
         };
+
+        // ✅ Strip drive letter for drive-letter-independent path comparison
+        // "G:\Foo\Bar" → "Foo\Bar"
+        private static string StripRoot(string path)
+        {
+            try
+            {
+                var root = System.IO.Path.GetPathRoot(path) ?? "";
+                return path.Substring(root.Length).TrimEnd('\\', '/');
+            }
+            catch { return path; }
+        }
 
         private static string GetInitials(string name)
         {

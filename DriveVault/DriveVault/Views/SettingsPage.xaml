@@ -296,9 +296,10 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <PasswordBox Grid.Column="0"
-                                         x:Name="ActivityPasswordBox"
-                                         PlaceholderText="Set activity log password"
-                                         Margin="0,0,8,0"/>
+             x:Name="ActivityPasswordBox"
+             PlaceholderText="Set activity log password"
+             Margin="0,0,8,0"
+             PasswordRevealMode="Hidden"/>
                             <Button Grid.Column="1" Content="Save"
                                     Click="SavePassword_Click"/>
                         </Grid>

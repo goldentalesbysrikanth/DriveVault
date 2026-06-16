@@ -38,6 +38,59 @@ namespace DriveVault.Views
         {
             _allDrives = DatabaseHelper.GetAllDrives();
 
+            // ✅ CHANGE — when highlightFolderId given, search ALL folders
+            // (subfolders too) so items like "Drone" inside a parent can be found.
+            // For normal load, top-level only as before.
+            if (!string.IsNullOrEmpty(highlightFolderId))
+            {
+                var allFolders = new List<DriveFolder>();
+                foreach (var drive in _allDrives)
+                    allFolders.AddRange(DatabaseHelper.GetFoldersByDrive(drive.Id));
+
+                var target = allFolders.FirstOrDefault(
+                    f => f.Id == highlightFolderId);
+
+                // Load top-level list for display (same as normal)
+                _allFolders = DatabaseHelper.GetAllFolders()
+                    .GroupBy(f => f.FolderPath)
+                    .Select(g => g.OrderByDescending(f =>
+                        _allDrives.Any(d => d.Id == f.DriveId) ? 1 : 0)
+                        .First())
+                    .ToList();
+
+                var driveItems2 = new List<string> { "All Drives" };
+                driveItems2.AddRange(_allDrives.Select(d => d.Label));
+                DriveFilterCombo.ItemsSource = driveItems2;
+                DriveFilterCombo.SelectedIndex = 0;
+
+                if (target != null)
+                {
+                    var topLevelTarget = _allFolders.FirstOrDefault(
+                        f => f.Id == highlightFolderId);
+
+                    if (topLevelTarget != null)
+                    {
+                        // Top-level folder — highlight in list
+                        var reordered = new List<DriveFolder> { topLevelTarget };
+                        reordered.AddRange(
+                            _allFolders.Where(f => f.Id != highlightFolderId));
+                        RefreshList(reordered, highlightFolderId);
+                    }
+                    else
+                    {
+                        // Subfolder — navigate directly to detail page
+                        Frame.Navigate(typeof(LibraryFolderDetailPage),
+                            highlightFolderId);
+                    }
+                    return;
+                }
+
+                // Target not found — fall through to normal display
+                RefreshList(_allFolders);
+                return;
+            }
+
+            // Normal load — unchanged from original
             _allFolders = DatabaseHelper.GetAllFolders()
                 .GroupBy(f => f.FolderPath)
                 .Select(g => g.OrderByDescending(f =>
@@ -50,23 +103,10 @@ namespace DriveVault.Views
             DriveFilterCombo.ItemsSource = driveItems;
             DriveFilterCombo.SelectedIndex = 0;
 
-            if (!string.IsNullOrEmpty(highlightFolderId))
-            {
-                // ✅ Target folder మొదటికి move చేయండి
-                var target = _allFolders
-                    .FirstOrDefault(f => f.Id == highlightFolderId);
-                if (target != null)
-                {
-                    var reordered = new List<DriveFolder> { target };
-                    reordered.AddRange(
-                        _allFolders.Where(f => f.Id != highlightFolderId));
-                    RefreshList(reordered, highlightFolderId);
-                    return;
-                }
-            }
-
             RefreshList(_allFolders);
         }
+
+        // ── Everything below is IDENTICAL to original ─────────────
 
         private void RefreshList(List<DriveFolder> folders,
             string? highlightFolderId = null)
@@ -103,7 +143,6 @@ namespace DriveVault.Views
                 };
             }).ToList();
 
-            // ✅ First item select చేయండి
             if (!string.IsNullOrEmpty(highlightFolderId))
             {
                 DispatcherQueue.TryEnqueue(() =>
@@ -175,7 +214,6 @@ namespace DriveVault.Views
         public string FileCount { get; set; } = "";
         public bool IsHighlighted { get; set; } = false;
 
-        // ✅ Highlight background — purple tint for searched item
         public string HighlightBackground =>
             IsHighlighted ? "#1A9B59B6" : "Transparent";
     }

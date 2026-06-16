@@ -37,17 +37,20 @@ namespace DriveVault
                 {
                     try
                     {
-                        var autoIndex = DatabaseHelper.GetSetting("auto_index", "true") == "true";
-                        var askBefore = DatabaseHelper.GetSetting("ask_before_index", "false") == "true";
+                        var autoIndex = DatabaseHelper.GetSetting(
+                            "auto_index", "true") == "true";
+                        var askBefore = DatabaseHelper.GetSetting(
+                            "ask_before_index", "false") == "true";
 
                         if (askBefore)
                         {
                             var dialog = new ContentDialog
                             {
-                                Title = "💾 New Drive Connected",
-                                Content = $"\"{drive.Label}\" is connected.\n\n" +
-                                                      "Would you like to index this drive now?\n" +
-                                                      "This will scan all top-level folders.",
+                                Title = "New Drive Connected",
+                                Content =
+                                    $"\"{drive.Label}\" is connected.\n\n" +
+                                    "Would you like to index this drive now?\n" +
+                                    "This will scan all top-level folders.",
                                 PrimaryButtonText = "Index Now",
                                 SecondaryButtonText = "Later",
                                 CloseButtonText = "Never ask again",
@@ -64,13 +67,13 @@ namespace DriveVault
                             }
                             else if (result == ContentDialogResult.Secondary)
                             {
-                                // ✅ Skip track చేయండి
                                 App.DriveWatcher.MarkDriveSkipped(drive.MountPath);
                                 RefreshCurrentPage();
                             }
                             else if (result == ContentDialogResult.None)
                             {
-                                DatabaseHelper.SaveSetting("ask_before_index", "false");
+                                DatabaseHelper.SaveSetting(
+                                    "ask_before_index", "false");
                                 RefreshCurrentPage();
                             }
                         }
@@ -146,7 +149,8 @@ namespace DriveVault
         {
             try
             {
-                var activated = DatabaseHelper.GetSetting("license_activated", "false");
+                var activated = DatabaseHelper.GetSetting(
+                    "license_activated", "false");
                 if (activated == "true")
                 {
                     NavView.SelectedItem = NavView.MenuItems[0];
@@ -165,7 +169,8 @@ namespace DriveVault
                         DateTimeStyles.RoundtripKind, out var installed))
                 {
                     installed = DateTime.Now;
-                    DatabaseHelper.SaveSetting("install_date", installed.ToString("o"));
+                    DatabaseHelper.SaveSetting(
+                        "install_date", installed.ToString("o"));
                 }
 
                 var daysLeft = 10 - (int)(DateTime.Now - installed).TotalDays;
@@ -173,7 +178,8 @@ namespace DriveVault
 
                 if (daysLeft <= 0)
                 {
-                    var readOnly = DatabaseHelper.GetSetting("read_only_mode", "false");
+                    var readOnly = DatabaseHelper.GetSetting(
+                        "read_only_mode", "false");
                     if (readOnly == "true")
                         ContentFrame.Navigate(typeof(OverviewPage));
                     else
@@ -234,6 +240,7 @@ namespace DriveVault
             }
         }
 
+        // ─── Global Search ────────────────────────────────────────
         private void SearchBox_TextChanged(AutoSuggestBox sender,
             AutoSuggestBoxTextChangedEventArgs args)
         {
@@ -251,8 +258,17 @@ namespace DriveVault
             {
                 var results = new List<SearchResult>();
                 var drives = DatabaseHelper.GetAllDrives();
-                var folders = DatabaseHelper.GetAllFolders();
+                var allFolders = new List<DriveFolder>();
 
+                foreach (var drive in drives)
+                    allFolders.AddRange(DatabaseHelper.GetFoldersByDrive(drive.Id));
+
+                allFolders = allFolders
+                    .GroupBy(f => f.Id)
+                    .Select(g => g.First())
+                    .ToList();
+
+                // ── Drives ────────────────────────────────────────
                 foreach (var d in drives
                     .Where(d => d.Label.ToLower().Contains(query) ||
                                 d.MountPath.ToLower().Contains(query)))
@@ -264,38 +280,58 @@ namespace DriveVault
                         Icon = "🖴"
                     });
 
-                foreach (var f in folders
+                // ── Library folders ───────────────────────────────
+                foreach (var f in allFolders
                     .Where(f => f.FolderName.ToLower().Contains(query))
-                    .Take(5))
-                    results.Add(new SearchResult
-                    {
-                        Title = f.FolderName,
-                        Subtitle = $"Library · {f.SizeDisplay} · {f.FileCount} files",
-                        Tag = "folder:" + f.Id,
-                        Icon = "📁"
-                    });
-
-                foreach (var f in folders
-                    .Where(f => f.FolderName.ToLower().Contains(query))
-                    .GroupBy(f => f.FolderName)
-                    .Select(g => g.First())
                     .Take(5))
                 {
                     var drive = drives.FirstOrDefault(d => d.Id == f.DriveId);
+                    var parentName = GetParentFolderName(
+                        f.FolderPath, drive?.MountPath ?? "");
+                    var location = string.IsNullOrEmpty(parentName)
+                        ? drive?.Label ?? "Unknown"
+                        : $"{drive?.Label ?? "Unknown"} › {parentName}";
+
                     results.Add(new SearchResult
                     {
                         Title = f.FolderName,
-                        Subtitle = $"Client · {drive?.Label ?? "Unknown"} · {f.SizeDisplay}",
-                        Tag = "client:" + f.Id,
+                        Subtitle = $"Library · {location} · {f.SizeDisplay} · {f.FileCount} files",
+                        Tag = "folder:" + f.Id,
+                        Icon = "📁"
+                    });
+                }
+
+                // ── Clients ───────────────────────────────────────
+                foreach (var g in allFolders
+                    .Where(f => f.FolderName.ToLower().Contains(query))
+                    .GroupBy(f => f.FolderName)
+                    .Take(5))
+                {
+                    var f = g.First();
+                    var drive = drives.FirstOrDefault(d => d.Id == f.DriveId);
+                    var total = g.Sum(x => x.SizeBytes);
+                    var parentName = GetParentFolderName(
+                        f.FolderPath, drive?.MountPath ?? "");
+                    var location = string.IsNullOrEmpty(parentName)
+                        ? drive?.Label ?? "Unknown"
+                        : $"{drive?.Label ?? "Unknown"} › {parentName}";
+
+                    results.Add(new SearchResult
+                    {
+                        Title = f.FolderName,
+                        Subtitle = $"Client · {location} · {FormatSize(total)}",
+                        // ✅ CHANGE 1 — store FolderName not Id
+                        Tag = "client:name:" + f.FolderName,
                         Icon = "👤"
                     });
                 }
 
-                sender.ItemsSource = results.Take(10).ToList();
+                sender.ItemsSource = results.Take(12).ToList();
             }
             catch { sender.ItemsSource = null; }
         }
 
+        // ─── Search suggestion chosen ─────────────────────────────
         private async void SearchBox_SuggestionChosen(AutoSuggestBox sender,
             AutoSuggestBoxSuggestionChosenEventArgs args)
         {
@@ -311,7 +347,7 @@ namespace DriveVault
                     var driveId = result.Tag.Replace("drive:", "");
                     _isSearchNavigating = true;
                     NavigateToTab("drives");
-                    await Task.Delay(100);
+                    await Task.Delay(150);
                     _isSearchNavigating = false;
                     ContentFrame.Navigate(typeof(DriveDetailPage), driveId);
                 }
@@ -320,48 +356,41 @@ namespace DriveVault
                     var folderId = result.Tag.Replace("folder:", "");
 
                     _isSearchNavigating = true;
+                    NavigateToTab("folders");
                     ContentFrame.Navigate(typeof(FoldersPage));
-
-                    foreach (var item in NavView.MenuItems)
-                    {
-                        if (item is NavigationViewItem navItem &&
-                            navItem.Tag?.ToString() == "folders")
-                        {
-                            NavView.SelectedItem = navItem;
-                            break;
-                        }
-                    }
                     _isSearchNavigating = false;
 
-                    await Task.Delay(100);
+                    await Task.Delay(200);
 
-                    // ✅ ScrollToFolder తీసేశాం — LoadData(folderId) వాడతాం
                     if (ContentFrame.Content is FoldersPage fp)
                         fp.LoadData(folderId);
                 }
-                else if (result.Tag.StartsWith("client:"))
+                // ✅ CHANGE 2 — match new tag, use NavigationCompleted
+                // + LoadDataByName for guaranteed highlight
+                else if (result.Tag.StartsWith("client:name:"))
                 {
-                    var folderId = result.Tag.Replace("client:", "");
+                    var folderName = result.Tag.Replace("client:name:", "");
 
                     _isSearchNavigating = true;
-                    ContentFrame.Navigate(typeof(ClientsPage));
+                    NavigateToTab("clients");
 
-                    foreach (var item in NavView.MenuItems)
+                    // Wait for actual navigation to complete
+                    var tcs = new TaskCompletionSource<bool>();
+                    void OnNavigated(object s,
+                        Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
                     {
-                        if (item is NavigationViewItem navItem &&
-                            navItem.Tag?.ToString() == "clients")
-                        {
-                            NavView.SelectedItem = navItem;
-                            break;
-                        }
+                        ContentFrame.Navigated -= OnNavigated;
+                        tcs.TrySetResult(true);
                     }
+                    ContentFrame.Navigated += OnNavigated;
+                    ContentFrame.Navigate(typeof(ClientsPage));
                     _isSearchNavigating = false;
 
-                    await Task.Delay(100);
+                    // Wait for page load (max 2s safety timeout)
+                    await Task.WhenAny(tcs.Task, Task.Delay(2000));
 
-                    // ✅ LoadData(folderId) వాడతాం
                     if (ContentFrame.Content is ClientsPage cp)
-                        cp.LoadData(folderId);
+                        cp.LoadDataByName(folderName);
                 }
             }
             catch { }
@@ -395,6 +424,39 @@ namespace DriveVault
             }
             catch { }
         }
+
+        // Returns immediate parent folder name from path
+        // e.g. "E:\Sushmitha & Raj\Drone" + "E:\" → "Sushmitha & Raj"
+        // e.g. "E:\ROJA+DEHRAJ"           + "E:\" → "" (top-level)
+        private static string GetParentFolderName(
+            string folderPath, string mountPath)
+        {
+            try
+            {
+                var mount = mountPath.TrimEnd('\\', '/');
+                var path = folderPath.TrimEnd('\\', '/');
+                var parent = System.IO.Path.GetDirectoryName(path) ?? "";
+                parent = parent.TrimEnd('\\', '/');
+
+                if (string.Equals(parent, mount,
+                    StringComparison.OrdinalIgnoreCase))
+                    return "";
+
+                return System.IO.Path.GetFileName(parent);
+            }
+            catch { return ""; }
+        }
+
+        private static string FormatSize(long bytes)
+        {
+            if (bytes >= 1_099_511_627_776)
+                return $"{bytes / 1_099_511_627_776.0:F1} TB";
+            if (bytes >= 1_073_741_824)
+                return $"{bytes / 1_073_741_824.0:F1} GB";
+            if (bytes >= 1_048_576)
+                return $"{bytes / 1_048_576.0:F1} MB";
+            return $"{bytes / 1024.0:F1} KB";
+        }
     }
 
     public class SearchResult
@@ -403,6 +465,6 @@ namespace DriveVault
         public string Subtitle { get; set; } = "";
         public string Tag { get; set; } = "";
         public string Icon { get; set; } = "";
-        public override string ToString() => $"{Icon} {Title} — {Subtitle}";
+        public override string ToString() => $"{Icon}  {Title} — {Subtitle}";
     }
 }

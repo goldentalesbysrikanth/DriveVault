@@ -32,30 +32,35 @@ namespace DriveVault.Views
 
         private void LoadData()
         {
-            var folders = DatabaseHelper.GetAllFolders();
-            var folder = folders.FirstOrDefault(f => f.Id == _folderId);
+            var drives = DatabaseHelper.GetAllDrives();
+
+            // Search ALL folders (top-level + subfolders)
+            DriveFolder? folder = null;
+            foreach (var drive in drives)
+            {
+                folder = DatabaseHelper.GetFoldersByDrive(drive.Id)
+                    .FirstOrDefault(f => f.Id == _folderId);
+                if (folder != null) break;
+            }
             if (folder == null) return;
 
-            var drives = DatabaseHelper.GetAllDrives();
-            var drive = drives.FirstOrDefault(d => d.Id == folder.DriveId);
+            var drive2 = drives.FirstOrDefault(d => d.Id == folder.DriveId);
 
             TitleText.Text = folder.FolderName;
             TotalSizeText.Text = folder.SizeDisplay;
             TotalFilesText.Text = $"{folder.FileCount:N0} files";
-            DriveNameText.Text = drive?.Label ?? "Unknown";
+            DriveNameText.Text = drive2?.Label ?? "Unknown";
             CreatedText.Text = folder.FirstSeen.ToString("MMM dd, yyyy");
 
             BuildFileTypeSummary(folder.FileTypeSummary);
             TreeContainer.Children.Clear();
 
-            if (drive?.IsConnected == true && Directory.Exists(folder.FolderPath))
+            if (drive2?.IsConnected == true && Directory.Exists(folder.FolderPath))
             {
-                // ✅ Online — live tree
                 BuildLiveTree(TreeContainer, folder.FolderPath, 0);
             }
             else
             {
-                // ✅ Offline message
                 var msgPanel = new StackPanel { Spacing = 4 };
                 msgPanel.Children.Add(new TextBlock
                 {
@@ -65,7 +70,7 @@ namespace DriveVault.Views
                 });
                 msgPanel.Children.Add(new TextBlock
                 {
-                    Text = $"Connect \"{drive?.Label ?? "this drive"}\" to browse subfolders.",
+                    Text = $"Connect \"{drive2?.Label ?? "this drive"}\" to browse subfolders.",
                     Style = (Style)Application.Current
                         .Resources["CaptionTextBlockStyle"],
                     Foreground = (Brush)Application.Current
@@ -93,34 +98,48 @@ namespace DriveVault.Views
                     Child = msgPanel
                 });
 
-                // ✅ DB నుండి cached subfolders show చేయండి
                 BuildDBTree(TreeContainer, folder.FolderPath,
                     folder.DriveId, 0);
             }
         }
 
+        // ✅ Strip drive letter — "G:\Foo\Bar" → "Foo\Bar"
+        // This makes path comparisons drive-letter-independent
+        private static string GetRelativePath(string fullPath)
+        {
+            try
+            {
+                var root = System.IO.Path.GetPathRoot(fullPath) ?? "";
+                return fullPath.Substring(root.Length).TrimEnd('\\', '/');
+            }
+            catch { return fullPath; }
+        }
+
         // ✅ Offline — DB stored subfolders tree
+        // CHANGED: uses GetRelativePath() so drive letter changes
+        // (G:\ → H:\) don't break subfolder matching
         private void BuildDBTree(StackPanel container,
             string parentPath, string driveId, int depth)
         {
             try
             {
                 var allFolders = DatabaseHelper.GetFoldersByDrive(driveId);
+                var parentRel = GetRelativePath(parentPath);
 
-                // Direct children మాత్రమే
                 var children = allFolders
                     .Where(f =>
                     {
-                        if (f.FolderPath.Equals(parentPath,
+                        var childRel = GetRelativePath(f.FolderPath);
+                        if (childRel.Equals(parentRel,
                             StringComparison.OrdinalIgnoreCase)) return false;
-                        if (!f.FolderPath.StartsWith(parentPath,
+                        if (!childRel.StartsWith(parentRel,
                             StringComparison.OrdinalIgnoreCase)) return false;
-                        var relative = f.FolderPath
-                            .Substring(parentPath.Length)
+                        var remainder = childRel
+                            .Substring(parentRel.Length)
                             .TrimStart('\\', '/');
-                        return !string.IsNullOrEmpty(relative) &&
-                               !relative.Contains('\\') &&
-                               !relative.Contains('/');
+                        return !string.IsNullOrEmpty(remainder) &&
+                               !remainder.Contains('\\') &&
+                               !remainder.Contains('/');
                     })
                     .OrderBy(f => f.FolderName)
                     .ToList();
@@ -129,14 +148,15 @@ namespace DriveVault.Views
 
                 foreach (var child in children)
                 {
+                    var childRel2 = GetRelativePath(child.FolderPath);
                     bool hasChildren = allFolders.Any(f =>
                     {
-                        if (f.FolderPath.Equals(child.FolderPath,
+                        var fRel = GetRelativePath(f.FolderPath);
+                        if (fRel.Equals(childRel2,
                             StringComparison.OrdinalIgnoreCase)) return false;
-                        if (!f.FolderPath.StartsWith(child.FolderPath,
+                        if (!fRel.StartsWith(childRel2,
                             StringComparison.OrdinalIgnoreCase)) return false;
-                        var rel = f.FolderPath
-                            .Substring(child.FolderPath.Length)
+                        var rel = fRel.Substring(childRel2.Length)
                             .TrimStart('\\', '/');
                         return !string.IsNullOrEmpty(rel) &&
                                !rel.Contains('\\') &&
@@ -169,7 +189,6 @@ namespace DriveVault.Views
                     };
                     Grid.SetColumn(expandBtn, 0);
 
-                    // Meta info
                     var metaParts = new List<string>();
                     if (child.FileCount > 0)
                         metaParts.Add($"{child.FileCount:N0} files");
@@ -255,7 +274,7 @@ namespace DriveVault.Views
             catch { }
         }
 
-        // ✅ Online — live tree scan
+        // ✅ Online — live tree scan (unchanged from original)
         private void BuildLiveTree(StackPanel container, string path, int depth)
         {
             try
@@ -324,7 +343,8 @@ namespace DriveVault.Views
                             metaParts.Add($"{fileCount:N0} files");
                         if (!string.IsNullOrEmpty(typeSummary))
                             metaParts.AddRange(
-                                typeSummary.Split('|').Take(4).Select(t => t.Trim()));
+                                typeSummary.Split('|').Take(4)
+                                .Select(t => t.Trim()));
                         metaParts.Add(created.ToString("MMM dd, yyyy"));
 
                         var infoPanel = new StackPanel { Spacing = 2 };
@@ -377,7 +397,8 @@ namespace DriveVault.Views
                                     ? Visibility.Visible
                                     : Visibility.Collapsed;
                                 if (isExpanded && childrenPanel.Children.Count == 0)
-                                    BuildLiveTree(childrenPanel, capturedDir, depth + 1);
+                                    BuildLiveTree(childrenPanel,
+                                        capturedDir, depth + 1);
                             };
                         }
 

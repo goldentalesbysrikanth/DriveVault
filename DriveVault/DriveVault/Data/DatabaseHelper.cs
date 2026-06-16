@@ -403,7 +403,7 @@ namespace DriveVault.Data
             LogActivity(
                 "setting_changed", "", "",
                 $"{settingName}: {oldValue} → {newValue}",
-                "System");
+                "Settings Updated.");
         }
 
         public static List<ActivityLog> GetRecentActivity(int days = 7)
