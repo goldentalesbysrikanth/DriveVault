@@ -695,6 +695,7 @@ namespace DriveVault.Data
                 AlbumDesigningStatus = reader["AlbumDesigningStatus"]?.ToString() ?? "NA",
                 CompleteProjectStatus = reader["CompleteProjectStatus"]?.ToString() ?? "NA",
                 Notes = reader["Notes"]?.ToString() ?? "",
+               
                 ProjectStartDate = DateTime.TryParse(
                     reader["ProjectStartDate"]?.ToString(), out var sd) ? sd : DateTime.Now,
                 LastUpdatedAt = DateTime.TryParse(

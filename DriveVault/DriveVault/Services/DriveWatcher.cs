@@ -129,10 +129,15 @@ namespace DriveVault.Services
                 bool hasChanges = false;
                 var existingDrives = DatabaseHelper.GetAllDrives();
 
+                // ─── Handle disconnected drives ───────────────────
                 foreach (var dbDrive in existingDrives.Where(d => d.IsConnected))
                 {
                     if (!currentPaths.Contains(dbDrive.MountPath))
                     {
+                        // ✅ SCENARIO 2 — skipped or never indexed → DELETE
+                        // Plain language: if user said "Later" or drive was never
+                        // fully indexed, remove it completely so it's treated
+                        // as a brand new drive when reconnected
                         if (_skippedDrives.Contains(dbDrive.MountPath) ||
                             !dbDrive.IsFullyIndexed)
                         {
@@ -145,6 +150,9 @@ namespace DriveVault.Services
                             continue;
                         }
 
+                        // ✅ SCENARIO 1 & 3 — fully indexed → mark OFFLINE
+                        // Plain language: drive was indexed before, keep its
+                        // data visible in the app, just show it as offline
                         dbDrive.IsConnected = false;
                         DatabaseHelper.SaveDrive(dbDrive);
                         DatabaseHelper.LogActivity(
@@ -158,8 +166,10 @@ namespace DriveVault.Services
                     }
                 }
 
-                var autoIndex = DatabaseHelper.GetSetting("auto_index", "true") == "true";
-                var askBefore = DatabaseHelper.GetSetting("ask_before_index", "false") == "true";
+                var autoIndex = DatabaseHelper.GetSetting(
+                    "auto_index", "true") == "true";
+                var askBefore = DatabaseHelper.GetSetting(
+                    "ask_before_index", "false") == "true";
                 var excludedRaw = DatabaseHelper.GetSetting("excluded_drives", "");
                 var excluded = excludedRaw.Split(',')
                     .Select(s => s.Trim().ToLower())
@@ -180,8 +190,28 @@ namespace DriveVault.Services
 
                         if (excluded.Contains(label.ToLower())) continue;
 
-                        var existing = existingDrives.FirstOrDefault(
-                            d => d.MountPath == mountPath);
+                        // ✅ FIX BUG 2 — Match by SerialNumber first
+                        // Plain language: every physical drive has a unique
+                        // serial number that never changes even if the drive
+                        // letter changes. E.g. "Kinnu" is always serial "A1B2C3D4"
+                        // whether it's on E:\ or F:\ — so we always find the
+                        // right drive regardless of letter changes.
+                        var existing =
+                            // 1st: match by serial number (most reliable)
+                            (!string.IsNullOrEmpty(serial)
+                                ? existingDrives.FirstOrDefault(d =>
+                                    !string.IsNullOrEmpty(d.SerialNumber) &&
+                                    d.SerialNumber == serial)
+                                : null)
+                            // 2nd: match by label + serial (handles edge cases)
+                            ?? (!string.IsNullOrEmpty(serial)
+                                ? existingDrives.FirstOrDefault(d =>
+                                    d.Label == label &&
+                                    d.SerialNumber == serial)
+                                : null)
+                            // Last resort: mount path (original behavior)
+                            ?? existingDrives.FirstOrDefault(d =>
+    d.MountPath == mountPath && d.IsConnected);
 
                         if (_skippedDrives.Contains(mountPath) && existing != null)
                         {
@@ -200,6 +230,7 @@ namespace DriveVault.Services
                             IsFullyIndexed = false
                         };
 
+                        // Always update these — drive letter may have changed
                         drive.Label = label;
                         drive.MountPath = mountPath;
                         drive.TotalBytes = wd.TotalSize;
@@ -208,9 +239,14 @@ namespace DriveVault.Services
                         drive.IsConnected = true;
                         drive.LastSeen = DateTime.Now;
 
+                        // Save serial if it was missing before
+                        if (string.IsNullOrEmpty(drive.SerialNumber))
+                            drive.SerialNumber = serial;
+
                         DatabaseHelper.SaveDrive(drive);
 
-                        bool justConnected = !_lastConnectedPaths.Contains(mountPath);
+                        bool justConnected =
+                            !_lastConnectedPaths.Contains(mountPath);
 
                         if (justConnected)
                         {
@@ -220,6 +256,7 @@ namespace DriveVault.Services
 
                             if (isBrandNew || _skippedDrives.Contains(mountPath))
                             {
+                                // SCENARIO 1 & 2 — new drive, show prompt
                                 NewDriveDetected?.Invoke(drive);
                             }
                             else if (askBefore && !drive.IsFullyIndexed)
@@ -238,6 +275,7 @@ namespace DriveVault.Services
                             }
                             else if (autoIndex && drive.IsFullyIndexed)
                             {
+                                // SCENARIO 3 — already indexed, run incremental
                                 Task.Run(() =>
                                 {
                                     bool changes = IndexDriveIncremental(drive);
@@ -309,7 +347,11 @@ namespace DriveVault.Services
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"IndexDriveFull called: {drive.Label} — Connected: {drive.IsConnected} — MountPath: {drive.MountPath}");
+                System.Diagnostics.Debug.WriteLine(
+                    $"IndexDriveFull called: {drive.Label} — " +
+                    $"Connected: {drive.IsConnected} — " +
+                    $"MountPath: {drive.MountPath}");
+
                 var oldFolders = DatabaseHelper.GetFoldersByDrive(drive.Id);
                 foreach (var old in oldFolders)
                     DatabaseHelper.DeleteFolder(old.Id);
@@ -357,7 +399,6 @@ namespace DriveVault.Services
                             IsTopLevel = true
                         };
                         DatabaseHelper.SaveFolder(topFolder);
-
                         DatabaseHelper.LogActivity(
                             "folder_added", drive.Id,
                             topFolder.Id, folderName, drive.Label,
@@ -379,7 +420,6 @@ namespace DriveVault.Services
             catch { }
         }
 
-        // ✅ Used only during full index — always creates new records
         private void IndexSubFolders(Drive drive, string parentPath, int depth)
         {
             if (depth > 3) return;
@@ -425,8 +465,6 @@ namespace DriveVault.Services
             catch { }
         }
 
-        // ✅ Used during incremental — checks existing DB before saving
-        // Avoids duplicate GUID inserts that caused ArgumentException
         private void SyncSubFolders(Drive drive, string parentPath,
             Dictionary<string, DriveFolder> existingPaths,
             ref bool hasChanges, int depth = 1)
@@ -449,7 +487,6 @@ namespace DriveVault.Services
                     {
                         if (!existingPaths.ContainsKey(subPath))
                         {
-                            // ✅ New subfolder — safe to create new record
                             var subFiles = new DirectoryInfo(subPath)
                                 .EnumerateFiles("*", SearchOption.AllDirectories)
                                 .ToList();
@@ -478,7 +515,6 @@ namespace DriveVault.Services
                             hasChanges = true;
                         }
 
-                        // Recurse deeper to catch sub-subfolders
                         SyncSubFolders(drive, subPath,
                             existingPaths, ref hasChanges, depth + 1);
                     }
@@ -488,7 +524,6 @@ namespace DriveVault.Services
             catch { }
         }
 
-        // ─── Incremental Index ────────────────────────────────────
         public bool IndexDriveIncremental(Drive drive)
         {
             bool hasChanges = false;
@@ -518,11 +553,11 @@ namespace DriveVault.Services
                         currentPaths.Add(folderPath);
 
                         var allFiles = new DirectoryInfo(folderPath)
-                            .EnumerateFiles("*", SearchOption.AllDirectories).ToList();
+                            .EnumerateFiles("*", SearchOption.AllDirectories)
+                            .ToList();
 
                         if (!existingPaths.ContainsKey(folderPath))
                         {
-                            // Brand new top-level folder
                             var folder = new DriveFolder
                             {
                                 Id = Guid.NewGuid().ToString(),
@@ -544,7 +579,6 @@ namespace DriveVault.Services
                                 folder.FileCount,
                                 folder.SizeBytes);
                             existingPaths[folderPath] = folder;
-                            // Index its subfolders (safe — folder is brand new)
                             IndexSubFolders(drive, folderPath, 1);
                             hasChanges = true;
                         }
@@ -574,8 +608,6 @@ namespace DriveVault.Services
                                 hasChanges = true;
                             }
 
-                            // ✅ CHANGE — use SyncSubFolders (checks DB first)
-                            // NOT IndexSubFolders (always creates new records)
                             SyncSubFolders(drive, folderPath,
                                 existingPaths, ref hasChanges);
                         }
