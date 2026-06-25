@@ -35,7 +35,6 @@ namespace DriveVault.Views
             var drives = DatabaseHelper.GetAllDrives();
             var drive = drives.FirstOrDefault(d => d.Id == _driveId);
 
-            // ✅ Drive Id మారి ఉంటే — MountPath తో find చేయండి
             if (drive == null)
             {
                 var oldDrive = DatabaseHelper.GetAllDrives()
@@ -45,7 +44,6 @@ namespace DriveVault.Views
             }
             if (drive == null) return;
 
-            // ✅ _driveId update చేయండి
             _driveId = drive.Id;
             TitleText.Text = drive.Label;
             DriveTypeText.Text = drive.DriveType + " · " + drive.MountPath;
@@ -55,12 +53,10 @@ namespace DriveVault.Views
             StorageBar.Value = drive.UsedPercent;
 
             var folders = DatabaseHelper.GetFoldersByDrive(_driveId)
-    .Where(f => f.IsTopLevel)
-    .ToList();
+                .Where(f => f.IsTopLevel)
+                .ToList();
 
-            // ✅ Folder count
             FolderCountText.Text = $"{folders.Count} folders";
-            // ✅ FolderListViewModel — matches x:DataType in XAML
             FoldersListView.ItemsSource = folders.Select(f => new FolderListViewModel
             {
                 FolderId = f.Id,
@@ -86,35 +82,7 @@ namespace DriveVault.Views
             var drive = drives.FirstOrDefault(d => d.Id == _driveId);
             if (drive == null) return;
 
-            var progressBar = new ProgressBar
-            {
-                Minimum = 0,
-                Maximum = 100,
-                Value = 0,
-                Width = 300
-            };
-            var statusText = new TextBlock
-            {
-                Text = "Starting...",
-                Margin = new Thickness(0, 8, 0, 0),
-                TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-                MaxWidth = 300
-            };
-            // ✅ ThemeResource — no Colors.Gray
-            var percentText = new TextBlock
-            {
-                Text = "0%",
-                Margin = new Thickness(0, 4, 0, 0),
-                Foreground = (Brush)Application.Current
-                    .Resources["TextFillColorSecondaryBrush"]
-            };
-
-            var panel = new StackPanel { Spacing = 4 };
-            panel.Children.Add(progressBar);
-            panel.Children.Add(statusText);
-            panel.Children.Add(percentText);
-
-            // ✅ Drive connected గా ఉందా check చేయండి
+            // ✅ Drive connected check — unchanged
             if (!drive.IsConnected)
             {
                 await new ContentDialog
@@ -127,41 +95,37 @@ namespace DriveVault.Views
                 return;
             }
 
-            var dialog = new ContentDialog
-            {
-                Title = $"Indexing {drive.Label}...",
-                Content = panel,
-                XamlRoot = XamlRoot
-            };
+            // ✅ FIX — removed _watcher.MarkDriveRemoved(drive.MountPath)
+            // That line was creating a new drive record on every re-index
+            // causing duplicate folders in the list
 
-            // ✅ Handler reference store చేయండి
-            Action<int, int, string> progressHandler = (current, total, folderName) =>
+            // ✅ Use sidebar banner instead of blocking dialog
+            App.MainWindow?.ShowIndexingBanner(drive.Label);
+
+            System.Diagnostics.Debug.WriteLine(
+                $"ReindexButton: {drive.Label} — " +
+                $"Connected: {drive.IsConnected} — " +
+                $"Indexed: {drive.IsFullyIndexed}");
+
+            try
             {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    var pct = total > 0 ? (current * 100.0 / total) : 0;
-                    progressBar.Value = pct;
-                    statusText.Text = $"Indexing: {folderName}";
-                    percentText.Text = $"{current} of {total} ({pct:F0}%)";
-                });
-            };
-            _watcher.IndexProgress += progressHandler;
-            _watcher.MarkDriveRemoved(drive.MountPath);
-            System.Diagnostics.Debug.WriteLine($"ReindexButton: {drive.Label} — Connected: {drive.IsConnected} — Indexed: {drive.IsFullyIndexed}");
-            var indexTask = Task.Run(() => _watcher.IndexDriveFull(drive));
-            dialog.ShowAsync();
-            await indexTask;
-            dialog.Hide();
-            // ✅ Handler remove చేయండి
-            _watcher.IndexProgress -= progressHandler;
-            LoadData();
+                await Task.Run(() => _watcher.IndexDriveFull(drive));
+            }
+            finally
+            {
+                App.MainWindow?.HideIndexingBanner();
+                LoadData();
+            }
         }
 
         private static string FormatSize(long bytes)
         {
-            if (bytes >= 1_099_511_627_776) return $"{bytes / 1_099_511_627_776.0:F1} TB";
-            if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
-            if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+            if (bytes >= 1_099_511_627_776)
+                return $"{bytes / 1_099_511_627_776.0:F1} TB";
+            if (bytes >= 1_073_741_824)
+                return $"{bytes / 1_073_741_824.0:F1} GB";
+            if (bytes >= 1_048_576)
+                return $"{bytes / 1_048_576.0:F1} MB";
             return $"{bytes / 1024.0:F1} KB";
         }
     }

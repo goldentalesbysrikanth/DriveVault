@@ -22,6 +22,7 @@
             <TextBlock x:Name="TitleText"
                        Text="Folder"
                        Style="{ThemeResource TitleTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                        VerticalAlignment="Center"/>
         </StackPanel>
 
@@ -42,29 +43,37 @@
                     <TextBlock Text="Total Size"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- ✅ ADDED Foreground -->
                     <TextBlock x:Name="TotalSizeText"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Spacing="4">
                     <TextBlock Text="Total Files"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- ✅ ADDED Foreground -->
                     <TextBlock x:Name="TotalFilesText"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Spacing="4">
                     <TextBlock Text="Drive"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- ✅ ADDED Foreground -->
                     <TextBlock x:Name="DriveNameText"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="3" Spacing="4">
                     <TextBlock Text="Created"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- ✅ ADDED Foreground -->
                     <TextBlock x:Name="CreatedText"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
             </Grid>
         </Border>

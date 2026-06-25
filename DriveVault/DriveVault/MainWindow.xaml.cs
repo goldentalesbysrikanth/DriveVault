@@ -1,6 +1,7 @@
 using DriveVault.Data;
 using DriveVault.Services;
 using DriveVault.Views;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -10,6 +11,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.UI;
 
 namespace DriveVault
 {
@@ -31,6 +33,8 @@ namespace DriveVault
             var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
             appWindow.Resize(new Windows.Graphics.SizeInt32(1200, 750));
             appWindow.Closing += AppWindow_Closing;
+
+            StyleTitleBar(appWindow);
 
             _driveWatcher.NewDriveDetected += (drive) =>
             {
@@ -100,28 +104,125 @@ namespace DriveVault
                 });
             };
 
+            // ✅ ADDED — wire up IndexProgress to sidebar banner
+            _driveWatcher.IndexProgress += (current, total, folderName) =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        var pct = total > 0 ? (current * 100.0 / total) : 0;
+                        IndexingBanner.Visibility = Visibility.Visible;
+                        IndexingProgressBar.Value = pct;
+                        IndexingPercentText.Text = $"{(int)pct}%";
+                        IndexingFolderText.Text = folderName;
+                    }
+                    catch { }
+                });
+            };
+
+            _driveWatcher.DataChanged += () =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        // ✅ Hide banner when indexing completes
+                        // DataChanged fires after IndexDriveFull sets IsFullyIndexed=true
+                        if (!_isIndexing)
+                        {
+                            IndexingBanner.Visibility = Visibility.Collapsed;
+                            IndexingProgressBar.Value = 0;
+                            IndexingPercentText.Text = "0%";
+                            IndexingFolderText.Text = "";
+                        }
+                    }
+                    catch { }
+                });
+            };
+
             _driveWatcher.Start();
             CheckTrial();
             ApplyTheme();
 
-            // ✅ NEW — start splash overlay animation
             DispatcherQueue.TryEnqueue(async () =>
             {
                 await ShowSplashAsync();
             });
         }
 
-        // ✅ NEW — animates the splash overlay then hides it
-        // Plain language: logo fades in on top of the app,
-        // holds for 2 seconds, then fades out revealing the real UI
+        // ✅ ADDED — set drive name on banner when indexing starts
+        public void ShowIndexingBanner(string driveLabel)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                try
+                {
+                    IndexingDriveText.Text = $"Indexing {driveLabel}...";
+                    IndexingBanner.Visibility = Visibility.Visible;
+                    IndexingProgressBar.Value = 0;
+                    IndexingPercentText.Text = "0%";
+                    IndexingFolderText.Text = "";
+                }
+                catch { }
+            });
+        }
+
+        // ✅ ADDED — hide banner when indexing completes
+        public void HideIndexingBanner()
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                try
+                {
+                    IndexingBanner.Visibility = Visibility.Collapsed;
+                    IndexingProgressBar.Value = 0;
+                    IndexingPercentText.Text = "0%";
+                    IndexingFolderText.Text = "";
+                }
+                catch { }
+            });
+        }
+
+        private static void StyleTitleBar(
+            Microsoft.UI.Windowing.AppWindow appWindow)
+        {
+            try
+            {
+                var titleBar = appWindow.TitleBar;
+
+                titleBar.ExtendsContentIntoTitleBar = true;
+
+                var bgColor = Color.FromArgb(255, 13, 17, 23);
+                var bgHover = Color.FromArgb(255, 15, 32, 51);
+                var bgPress = Color.FromArgb(255, 27, 58, 92);
+
+                titleBar.BackgroundColor = bgColor;
+                titleBar.InactiveBackgroundColor = bgColor;
+                titleBar.ButtonBackgroundColor = bgColor;
+                titleBar.ButtonInactiveBackgroundColor = bgColor;
+                titleBar.ButtonHoverBackgroundColor = bgHover;
+                titleBar.ButtonPressedBackgroundColor = bgPress;
+
+                var fgColor = Color.FromArgb(255, 255, 255, 255);
+                var fgInactive = Color.FromArgb(180, 255, 255, 255);
+
+                titleBar.ForegroundColor = fgColor;
+                titleBar.InactiveForegroundColor = fgInactive;
+                titleBar.ButtonForegroundColor = fgColor;
+                titleBar.ButtonInactiveForegroundColor = fgInactive;
+                titleBar.ButtonHoverForegroundColor = fgColor;
+                titleBar.ButtonPressedForegroundColor = fgColor;
+            }
+            catch { }
+        }
+
         private async Task ShowSplashAsync()
         {
             try
             {
-                // Small delay to ensure window is fully rendered
                 await Task.Delay(100);
 
-                // ── Fade in logo (0.6s) ───────────────────────────
                 var fadeIn = new Storyboard();
 
                 var overlayFadeIn = new DoubleAnimation
@@ -138,8 +239,7 @@ namespace DriveVault
                     From = 0.9,
                     To = 1.0,
                     Duration = new Duration(TimeSpan.FromSeconds(0.7)),
-                    EasingFunction = new CubicEase
-                    { EasingMode = EasingMode.EaseOut }
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                 };
                 Storyboard.SetTarget(scaleXIn, SplashScale);
                 Storyboard.SetTargetProperty(scaleXIn, "ScaleX");
@@ -149,8 +249,7 @@ namespace DriveVault
                     From = 0.9,
                     To = 1.0,
                     Duration = new Duration(TimeSpan.FromSeconds(0.7)),
-                    EasingFunction = new CubicEase
-                    { EasingMode = EasingMode.EaseOut }
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                 };
                 Storyboard.SetTarget(scaleYIn, SplashScale);
                 Storyboard.SetTargetProperty(scaleYIn, "ScaleY");
@@ -160,10 +259,8 @@ namespace DriveVault
                 fadeIn.Children.Add(scaleYIn);
                 fadeIn.Begin();
 
-                // Hold
                 await Task.Delay(2500);
 
-                // ── Fade out overlay (0.6s) ───────────────────────
                 var fadeOut = new Storyboard();
 
                 var overlayFadeOut = new DoubleAnimation
@@ -171,8 +268,7 @@ namespace DriveVault
                     From = 1,
                     To = 0,
                     Duration = new Duration(TimeSpan.FromSeconds(0.6)),
-                    EasingFunction = new CubicEase
-                    { EasingMode = EasingMode.EaseIn }
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
                 };
                 Storyboard.SetTarget(overlayFadeOut, SplashOverlay);
                 Storyboard.SetTargetProperty(overlayFadeOut, "Opacity");
@@ -182,7 +278,6 @@ namespace DriveVault
 
                 await Task.Delay(650);
 
-                // Collapse overlay so it doesn't block UI interaction
                 SplashOverlay.Visibility = Visibility.Collapsed;
             }
             catch { }
@@ -192,6 +287,9 @@ namespace DriveVault
         {
             try
             {
+                // ✅ Show banner when indexing starts via dialog prompt
+                ShowIndexingBanner(drive.Label);
+
                 _indexCts = new CancellationTokenSource();
                 _isIndexing = true;
                 await Task.Run(() =>
@@ -207,6 +305,9 @@ namespace DriveVault
                 _isIndexing = false;
                 _indexCts?.Dispose();
                 _indexCts = null;
+
+                // ✅ Hide banner when done
+                HideIndexingBanner();
             }
         }
 

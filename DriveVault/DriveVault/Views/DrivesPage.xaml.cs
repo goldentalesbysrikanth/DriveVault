@@ -76,7 +76,6 @@ namespace DriveVault.Views
 
             var folders = DatabaseHelper.GetAllFolders();
 
-            // ✅ NO SolidColorBrush in ViewModel — converters handle in XAML
             var viewModels = sorted.Select(d =>
             {
                 var shootCount = folders.Count(f => f.DriveId == d.Id);
@@ -203,7 +202,6 @@ namespace DriveVault.Views
             if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
                 _watcher.MarkDriveRemoved(drive.MountPath);
-                // ✅ Drive removed log
                 DatabaseHelper.LogActivity(
                     "drive_removed", drive.Id, "",
                     drive.Label, drive.Label);
@@ -221,82 +219,60 @@ namespace DriveVault.Views
 
         public async Task ReindexDrive(string driveId)
         {
+            // ✅ Refresh drive from DB — ID may have changed after skip/reconnect
             var drive = DatabaseHelper.GetAllDrives()
                 .FirstOrDefault(d => d.Id == driveId);
-            if (drive == null) return;
 
-            var progressBar = new ProgressBar
+            // ✅ If not found by ID, try by MountPath for connected drives
+            if (drive == null)
             {
-                Minimum = 0,
-                Maximum = 100,
-                Value = 0,
-                Width = 300
-            };
-            var statusText = new TextBlock
-            {
-                Text = "Starting...",
-                Margin = new Thickness(0, 8, 0, 0),
-                TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-                MaxWidth = 300
-            };
-            // ✅ ThemeResource — Color.FromArgb కాదు
-            var percentText = new TextBlock
-            {
-                Text = "0%",
-                Margin = new Thickness(0, 4, 0, 0),
-                Foreground = (Brush)Application.Current
-                    .Resources["TextFillColorSecondaryBrush"]
-            };
+                var stale = DatabaseHelper.GetAllDrives()
+                    .FirstOrDefault(d => d.IsConnected);
+                if (stale == null) return;
+                drive = stale;
+            }
 
-            var panel = new StackPanel { Spacing = 4 };
-            panel.Children.Add(progressBar);
-            panel.Children.Add(statusText);
-            panel.Children.Add(percentText);
+            if (!drive.IsConnected) return;
 
-            var dialog = new ContentDialog
+            // ✅ Show sidebar banner instead of blocking dialog
+            App.MainWindow?.ShowIndexingBanner(drive.Label);
+
+            try
             {
-                Title = $"Indexing {drive.Label}...",
-                Content = panel,
-                XamlRoot = XamlRoot
-            };
-
-            _watcher.IndexProgress += (current, total, folderName) =>
+                await Task.Run(() => _watcher.IndexDriveFull(drive));
+            }
+            finally
             {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    var pct = total > 0 ? (current * 100.0 / total) : 0;
-                    progressBar.Value = pct;
-                    statusText.Text = $"Indexing: {folderName}";
-                    percentText.Text = $"{current} of {total} ({pct:F0}%)";
-                });
-            };
-
-            var indexTask = Task.Run(() => _watcher.IndexDriveFull(drive));
-            dialog.ShowAsync();
-            await indexTask;
-            dialog.Hide();
-            LoadData();
+                // ✅ Hide banner when done — success or failure
+                App.MainWindow?.HideIndexingBanner();
+                LoadData();
+            }
         }
 
         private static string GetLastSeen(DateTime lastSeen)
         {
             var diff = DateTime.Now - lastSeen;
-            if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} min ago";
-            if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
-            if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+            if (diff.TotalMinutes < 60)
+                return $"{(int)diff.TotalMinutes} min ago";
+            if (diff.TotalHours < 24)
+                return $"{(int)diff.TotalHours}h ago";
+            if (diff.TotalDays < 7)
+                return $"{(int)diff.TotalDays}d ago";
             return lastSeen.ToString("MMM dd, yyyy");
         }
 
         private static string FormatSize(long bytes)
         {
-            if (bytes >= 1_099_511_627_776) return $"{bytes / 1_099_511_627_776.0:F1} TB";
-            if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
-            if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+            if (bytes >= 1_099_511_627_776)
+                return $"{bytes / 1_099_511_627_776.0:F1} TB";
+            if (bytes >= 1_073_741_824)
+                return $"{bytes / 1_073_741_824.0:F1} GB";
+            if (bytes >= 1_048_576)
+                return $"{bytes / 1_048_576.0:F1} MB";
             return $"{bytes / 1024.0:F1} KB";
         }
     }
 
-    // ✅ NO SolidColorBrush — converters handle brushes in XAML
     public class DriveItemViewModel
     {
         public string DriveId { get; set; } = "";

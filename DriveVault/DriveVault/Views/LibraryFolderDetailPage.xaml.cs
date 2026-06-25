@@ -20,6 +20,19 @@ namespace DriveVault.Views
             this.InitializeComponent();
         }
 
+        // ✅ FIX — returns correct white/black based on actual theme
+        // Application.Current.Resources always returns light theme brush
+        // This helper checks actual theme and returns correct color
+        private SolidColorBrush PrimaryFg =>
+            new SolidColorBrush(ActualTheme == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(255, 255, 255, 255)
+                : Windows.UI.Color.FromArgb(255, 26, 26, 26));
+
+        private SolidColorBrush SecondaryFg =>
+    new SolidColorBrush(ActualTheme == ElementTheme.Dark
+        ? Windows.UI.Color.FromArgb(255, 180, 180, 180)
+        : Windows.UI.Color.FromArgb(255, 100, 100, 100));
+
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
@@ -34,7 +47,6 @@ namespace DriveVault.Views
         {
             var drives = DatabaseHelper.GetAllDrives();
 
-            // Search ALL folders (top-level + subfolders)
             DriveFolder? folder = null;
             foreach (var drive in drives)
             {
@@ -66,7 +78,8 @@ namespace DriveVault.Views
                 {
                     Text = "⚫ Drive is offline",
                     Style = (Style)Application.Current
-                        .Resources["BodyStrongTextBlockStyle"]
+                        .Resources["BodyStrongTextBlockStyle"],
+                    Foreground = PrimaryFg
                 });
                 msgPanel.Children.Add(new TextBlock
                 {
@@ -103,8 +116,6 @@ namespace DriveVault.Views
             }
         }
 
-        // ✅ Strip drive letter — "G:\Foo\Bar" → "Foo\Bar"
-        // This makes path comparisons drive-letter-independent
         private static string GetRelativePath(string fullPath)
         {
             try
@@ -115,9 +126,6 @@ namespace DriveVault.Views
             catch { return fullPath; }
         }
 
-        // ✅ Offline — DB stored subfolders tree
-        // CHANGED: uses GetRelativePath() so drive letter changes
-        // (G:\ → H:\) don't break subfolder matching
         private void BuildDBTree(StackPanel container,
             string parentPath, string driveId, int depth)
         {
@@ -168,12 +176,12 @@ namespace DriveVault.Views
                     {
                         Padding = new Thickness(depth * 20 + 8, 8, 12, 8)
                     };
-                    headerGrid.ColumnDefinitions.Add(new ColumnDefinition
-                    { Width = GridLength.Auto });
-                    headerGrid.ColumnDefinitions.Add(new ColumnDefinition
-                    { Width = new GridLength(1, GridUnitType.Star) });
-                    headerGrid.ColumnDefinitions.Add(new ColumnDefinition
-                    { Width = GridLength.Auto });
+                    headerGrid.ColumnDefinitions.Add(
+                        new ColumnDefinition { Width = GridLength.Auto });
+                    headerGrid.ColumnDefinitions.Add(
+                        new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    headerGrid.ColumnDefinitions.Add(
+                        new ColumnDefinition { Width = GridLength.Auto });
 
                     var expandBtn = new Button
                     {
@@ -206,15 +214,15 @@ namespace DriveVault.Views
                     {
                         Text = "📁 " + child.FolderName,
                         Style = (Style)Application.Current
-                            .Resources["BodyTextBlockStyle"]
+                            .Resources["BodyTextBlockStyle"],
+                        Foreground = PrimaryFg   // ✅ theme-aware
                     });
                     infoPanel.Children.Add(new TextBlock
                     {
                         Text = string.Join(" · ", metaParts),
                         Style = (Style)Application.Current
                             .Resources["CaptionTextBlockStyle"],
-                        Foreground = (Brush)Application.Current
-                            .Resources["TextFillColorSecondaryBrush"],
+                        Foreground = SecondaryFg,
                         TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
                     });
                     Grid.SetColumn(infoPanel, 1);
@@ -224,6 +232,7 @@ namespace DriveVault.Views
                         Text = child.SizeDisplay,
                         Style = (Style)Application.Current
                             .Resources["BodyTextBlockStyle"],
+                        Foreground = PrimaryFg,   // ✅ theme-aware
                         VerticalAlignment = VerticalAlignment.Center,
                         Margin = new Thickness(12, 0, 0, 0)
                     };
@@ -274,7 +283,6 @@ namespace DriveVault.Views
             catch { }
         }
 
-        // ✅ Online — live tree scan (unchanged from original)
         private void BuildLiveTree(StackPanel container, string path, int depth)
         {
             try
@@ -317,12 +325,12 @@ namespace DriveVault.Views
                         {
                             Padding = new Thickness(depth * 20 + 8, 8, 12, 8)
                         };
-                        headerGrid.ColumnDefinitions.Add(new ColumnDefinition
-                        { Width = GridLength.Auto });
-                        headerGrid.ColumnDefinitions.Add(new ColumnDefinition
-                        { Width = new GridLength(1, GridUnitType.Star) });
-                        headerGrid.ColumnDefinitions.Add(new ColumnDefinition
-                        { Width = GridLength.Auto });
+                        headerGrid.ColumnDefinitions.Add(
+                            new ColumnDefinition { Width = GridLength.Auto });
+                        headerGrid.ColumnDefinitions.Add(
+                            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                        headerGrid.ColumnDefinitions.Add(
+                            new ColumnDefinition { Width = GridLength.Auto });
 
                         var expandBtn = new Button
                         {
@@ -352,15 +360,15 @@ namespace DriveVault.Views
                         {
                             Text = "📁 " + name,
                             Style = (Style)Application.Current
-                                .Resources["BodyTextBlockStyle"]
+                                .Resources["BodyTextBlockStyle"],
+                            Foreground = PrimaryFg   // ✅ theme-aware
                         });
                         infoPanel.Children.Add(new TextBlock
                         {
                             Text = string.Join(" · ", metaParts),
                             Style = (Style)Application.Current
                                 .Resources["CaptionTextBlockStyle"],
-                            Foreground = (Brush)Application.Current
-                                .Resources["TextFillColorSecondaryBrush"],
+                            Foreground = SecondaryFg,
                             TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
                         });
                         Grid.SetColumn(infoPanel, 1);
@@ -370,6 +378,7 @@ namespace DriveVault.Views
                             Text = FormatSize(size),
                             Style = (Style)Application.Current
                                 .Resources["BodyTextBlockStyle"],
+                            Foreground = PrimaryFg,   // ✅ theme-aware
                             VerticalAlignment = VerticalAlignment.Center,
                             Margin = new Thickness(12, 0, 0, 0)
                         };
@@ -442,10 +451,10 @@ namespace DriveVault.Views
             {
                 FileTypesPanel.Children.Add(new Border
                 {
-                    Background = (Brush)Application.Current
-                        .Resources["CardBackgroundFillColorDefaultBrush"],
-                    BorderBrush = (Brush)Application.Current
-                        .Resources["CardStrokeColorDefaultBrush"],
+                    Background = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 27, 58, 92)),
+                    BorderBrush = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(80, 77, 166, 255)),
                     BorderThickness = new Thickness(1),
                     CornerRadius = new CornerRadius(16),
                     Padding = new Thickness(10, 4, 10, 4),
@@ -453,7 +462,8 @@ namespace DriveVault.Views
                     {
                         Text = part.Trim(),
                         Style = (Style)Application.Current
-                            .Resources["CaptionTextBlockStyle"]
+                            .Resources["CaptionTextBlockStyle"],
+                        Foreground = new SolidColorBrush(Colors.White)
                     }
                 });
             }

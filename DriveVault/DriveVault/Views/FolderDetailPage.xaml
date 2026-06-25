@@ -21,6 +21,7 @@
             <TextBlock x:Name="TitleText"
                        Text="Folder Detail"
                        Style="{ThemeResource TitleTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                        VerticalAlignment="Center"/>
         </StackPanel>
 
@@ -42,22 +43,28 @@
                     <TextBlock Text="Size"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- ✅ ADDED Foreground -->
                     <TextBlock x:Name="SizeText"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Spacing="4">
                     <TextBlock Text="Drive"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- ✅ ADDED Foreground -->
                     <TextBlock x:Name="DriveText"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Spacing="4">
                     <TextBlock Text="Date Added"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- ✅ ADDED Foreground -->
                     <TextBlock x:Name="DateText"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -65,7 +72,8 @@
         <!-- Subfolders -->
         <StackPanel Grid.Row="2" Spacing="8">
             <TextBlock Text="Subfolders"
-                       Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                       Style="{ThemeResource SubtitleTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
             <ListView x:Name="SubfoldersListView"
                       SelectionMode="None">
                 <ListView.ItemTemplate>
@@ -87,13 +95,17 @@
                                            FontSize="18"
                                            Margin="0,0,12,0"
                                            VerticalAlignment="Center"/>
+                                <!-- ✅ ADDED Foreground -->
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding Name}"
                                            Style="{ThemeResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                                            VerticalAlignment="Center"/>
+                                <!-- ✅ ADDED Foreground -->
                                 <TextBlock Grid.Column="2"
                                            Text="{Binding Size}"
                                            Style="{ThemeResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                                            VerticalAlignment="Center"/>
                             </Grid>
                         </Border>

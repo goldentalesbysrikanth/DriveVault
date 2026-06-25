@@ -133,6 +133,20 @@ namespace DriveVault.Data
                 cmd.ExecuteNonQuery();
             }
             catch { }
+            // ✅ Remove duplicate folders — keep only latest per DriveId + FolderPath
+            try
+            {
+                cmd.CommandText =
+                    "DELETE FROM Folders WHERE Id NOT IN (" +
+                    "SELECT Id FROM Folders f1 " +
+                    "WHERE LastSeen = (" +
+                    "SELECT MAX(f2.LastSeen) FROM Folders f2 " +
+                    "WHERE f2.DriveId    = f1.DriveId " +
+                    "AND   f2.FolderPath = f1.FolderPath)" +
+                    ")";
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
         }
 
         // ─── Drives ───────────────────────────────────────────────

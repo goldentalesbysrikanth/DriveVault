@@ -87,16 +87,25 @@ namespace DriveVault.Services
                     var fileName = Path.GetFileNameWithoutExtension(file);
                     var isManual = fileName.Contains("manual");
 
-                    // Date parse చేయండి
+                   
                     DateTime date = info.CreationTime;
                     if (fileName.StartsWith("drivevault_"))
                     {
                         var datePart = fileName
-                            .Replace("drivevault_manual_", "")
-                            .Replace("drivevault_", "");
-                        DateTime.TryParse(
-                            datePart.Replace("_", " ").Replace("-", "/"),
-                            out date);
+    .Replace("drivevault_manual_", "")
+    .Replace("drivevault_", "");
+
+                        // ✅ Parse correctly — format is yyyy-MM-dd or yyyy-MM-dd_HH-mm
+                        var normalized = datePart.Replace("_", " ").Replace("-", "/");
+                        // Fix time part: "2026/06/20 14/30" → "2026/06/20 14:30"
+                        if (normalized.Length > 10)
+                        {
+                            var datePortion = normalized.Substring(0, 10);
+                            var timePortion = normalized.Substring(11).Replace("/", ":");
+                            normalized = datePortion + " " + timePortion;
+                        }
+                        if (!DateTime.TryParse(normalized, out date))
+                            date = info.CreationTime;
                     }
 
                     var diff = DateTime.Now - date;

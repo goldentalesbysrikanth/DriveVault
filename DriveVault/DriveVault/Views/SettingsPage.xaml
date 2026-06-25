@@ -118,6 +118,39 @@
                 </Border>
             </StackPanel>
 
+            <!-- ✅ APPEARANCE — NEW SECTION after INDEXING -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="APPEARANCE"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="App Theme"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                        <TextBlock Text="Choose how Drive Vault looks. Note: the sidebar always follows your Windows system theme."
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <RadioButton x:Name="ThemeLight"
+                                         Content="Light"
+                                         GroupName="AppTheme"
+                                         Checked="ThemeLight_Checked"/>
+                            <RadioButton x:Name="ThemeDark"
+                                         Content="Dark"
+                                         GroupName="AppTheme"
+                                         Checked="ThemeDark_Checked"/>
+                            <RadioButton x:Name="ThemeSystem"
+                                         Content="System"
+                                         GroupName="AppTheme"
+                                         Checked="ThemeSystem_Checked"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
             <!-- ALERTS -->
             <StackPanel Spacing="8">
                 <TextBlock Text="ALERTS"
@@ -215,7 +248,7 @@
                 </Border>
             </StackPanel>
 
-            <!-- ✅ APP SECURITY — NEW -->
+            <!-- APP SECURITY -->
             <StackPanel Spacing="8">
                 <TextBlock Text="APP SECURITY"
                            Style="{ThemeResource CaptionTextBlockStyle}"
@@ -224,8 +257,6 @@
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="16">
                     <StackPanel Spacing="12">
-
-                        <!-- Passcode Set/Change -->
                         <StackPanel Spacing="6">
                             <TextBlock Text="App Passcode"
                                        Style="{ThemeResource BodyStrongTextBlockStyle}"/>
@@ -245,17 +276,14 @@
                                         Click="RemovePasscode_Click"
                                         Visibility="Collapsed"/>
                                 <HyperlinkButton x:Name="ForgotPasscodeBtn"
-                     Content="Forgot Passcode?"
-                     Click="ForgotPasscode_Click"
-                     Visibility="Collapsed"
-                     Foreground="#9B59B6"/>
+                                    Content="Forgot Passcode?"
+                                    Click="ForgotPasscode_Click"
+                                    Visibility="Collapsed"
+                                    Foreground="#9B59B6"/>
                             </StackPanel>
                         </StackPanel>
-
                         <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                                 BorderThickness="0,1,0,0"/>
-
-                        <!-- App Lock -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -296,10 +324,10 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <PasswordBox Grid.Column="0"
-             x:Name="ActivityPasswordBox"
-             PlaceholderText="Set activity log password"
-             Margin="0,0,8,0"
-             PasswordRevealMode="Hidden"/>
+                                         x:Name="ActivityPasswordBox"
+                                         PlaceholderText="Set activity log password"
+                                         Margin="0,0,8,0"
+                                         PasswordRevealMode="Hidden"/>
                             <Button Grid.Column="1" Content="Save"
                                     Click="SavePassword_Click"/>
                         </Grid>
@@ -310,7 +338,7 @@
                 </Border>
             </StackPanel>
 
-            <!-- ✅ DATABASE — Backup & Restore added -->
+            <!-- DATABASE -->
             <StackPanel Spacing="8">
                 <TextBlock Text="DATABASE"
                            Style="{ThemeResource CaptionTextBlockStyle}"
@@ -319,8 +347,6 @@
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="16">
                     <StackPanel Spacing="12">
-
-                        <!-- DB Path -->
                         <StackPanel Spacing="2">
                             <TextBlock Text="Location"
                                        Style="{ThemeResource CaptionTextBlockStyle}"
@@ -329,11 +355,8 @@
                                        Style="{ThemeResource CaptionTextBlockStyle}"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
-
                         <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                                 BorderThickness="0,1,0,0"/>
-
-                        <!-- Backup -->
                         <StackPanel Spacing="6">
                             <TextBlock Text="Backup"
                                        Style="{ThemeResource BodyStrongTextBlockStyle}"/>
@@ -347,11 +370,8 @@
                             <Button Content="📦 Create Manual Backup"
                                     Click="CreateBackup_Click"/>
                         </StackPanel>
-
                         <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                                 BorderThickness="0,1,0,0"/>
-
-                        <!-- Restore -->
                         <StackPanel Spacing="6">
                             <TextBlock Text="Restore"
                                        Style="{ThemeResource BodyStrongTextBlockStyle}"/>
@@ -362,11 +382,8 @@
                             <Button Content="🔄 Restore from Backup..."
                                     Click="RestoreBackup_Click"/>
                         </StackPanel>
-
                         <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                                 BorderThickness="0,1,0,0"/>
-
-                        <!-- Actions -->
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <HyperlinkButton Content="Open in Explorer"
                                              Click="OpenDbFolder_Click"/>

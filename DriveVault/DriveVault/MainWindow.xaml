@@ -7,7 +7,6 @@
 
     <Grid x:Name="RootGrid">
 
-        <!-- ── Existing app UI — unchanged ────────────────────── -->
         <NavigationView
             x:Name="NavView"
             PaneDisplayMode="Left"
@@ -16,6 +15,131 @@
             IsSettingsVisible="False"
             SelectionChanged="NavView_SelectionChanged"
             OpenPaneLength="200">
+
+            <NavigationView.Resources>
+
+                <LinearGradientBrush x:Key="NavigationViewExpandedPaneBackground"
+                                     StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#0D1117" Offset="0.0"/>
+                    <GradientStop Color="#0F2033" Offset="0.5"/>
+                    <GradientStop Color="#1B3A5C" Offset="1.0"/>
+                </LinearGradientBrush>
+
+                <LinearGradientBrush x:Key="NavigationViewContentBackground"
+                                     StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#0D1117" Offset="0.0"/>
+                    <GradientStop Color="#0F2033" Offset="0.5"/>
+                    <GradientStop Color="#1B3A5C" Offset="1.0"/>
+                </LinearGradientBrush>
+
+                <SolidColorBrush x:Key="NavigationViewItemForeground"
+                                 Color="White"/>
+                <SolidColorBrush x:Key="NavigationViewItemForegroundSelected"
+                                 Color="White"/>
+                <SolidColorBrush x:Key="NavigationViewItemForegroundPointerOver"
+                                 Color="White"/>
+                <SolidColorBrush x:Key="NavigationViewItemForegroundPressed"
+                                 Color="White"/>
+                <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver"
+                                 Color="White"/>
+                <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed"
+                                 Color="White"/>
+                <SolidColorBrush x:Key="NavigationViewItemForegroundDisabled"
+                                 Color="#88FFFFFF"/>
+
+                <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground"
+                                 Color="#4DA6FF"/>
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected"
+                                 Color="#22FFFFFF"/>
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver"
+                                 Color="#15FFFFFF"/>
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundPressed"
+                                 Color="#30FFFFFF"/>
+
+                <SolidColorBrush x:Key="NavigationViewButtonForegroundPointerOver"
+                                 Color="White"/>
+                <SolidColorBrush x:Key="NavigationViewButtonForegroundPressed"
+                                 Color="White"/>
+
+                <SolidColorBrush x:Key="NavigationViewContentGridBorderBrush"
+                                 Color="#0D1117"/>
+                <SolidColorBrush x:Key="NavigationViewPaneBorderBrush"
+                                 Color="#0D1117"/>
+                <SolidColorBrush x:Key="NavigationViewItemSeparatorForeground"
+                                 Color="Transparent"/>
+                <Thickness x:Key="NavigationViewPaneBorderThickness">0</Thickness>
+
+            </NavigationView.Resources>
+
+            <!-- Logo + App name header -->
+            <NavigationView.PaneHeader>
+                <Grid Margin="16,8,16,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Image Grid.Column="0"
+                           Source="ms-appx:///Images/DriveVault_HighRes.png"
+                           Width="28" Height="28"
+                           VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1"
+                               Text="Drive Vault"
+                               Foreground="White"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="10,0,0,0"/>
+                </Grid>
+            </NavigationView.PaneHeader>
+
+            <!-- ✅ ADDED — Indexing progress banner in sidebar footer -->
+            <NavigationView.PaneFooter>
+                <Border x:Name="IndexingBanner"
+                        Visibility="Collapsed"
+                        Background="#22FFFFFF"
+                        CornerRadius="8"
+                        Margin="8,0,8,8"
+                        Padding="12,8,12,8">
+                    <StackPanel Spacing="6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ProgressRing Grid.Column="0"
+                                          IsActive="True"
+                                          Width="16" Height="16"
+                                          Foreground="White"/>
+                            <TextBlock Grid.Column="1"
+                                       x:Name="IndexingDriveText"
+                                       Text="Indexing..."
+                                       Foreground="White"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Column="2"
+                                       x:Name="IndexingPercentText"
+                                       Text="0%"
+                                       Foreground="#AAFFFFFF"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                        <ProgressBar x:Name="IndexingProgressBar"
+                                     Minimum="0" Maximum="100" Value="0"
+                                     Height="3"
+                                     Foreground="#4DA6FF"
+                                     Background="#33FFFFFF"/>
+                        <TextBlock x:Name="IndexingFolderText"
+                                   Text=""
+                                   Foreground="#88FFFFFF"
+                                   FontSize="10"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+            </NavigationView.PaneFooter>
+
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Overview" Tag="overview">
                     <NavigationViewItem.Icon>
@@ -43,6 +167,7 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+
             <NavigationView.FooterMenuItems>
                 <NavigationViewItem Content="Settings" Tag="settings">
                     <NavigationViewItem.Icon>
@@ -50,6 +175,7 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>
+
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -60,16 +186,15 @@
                     x:Name="SearchBox"
                     PlaceholderText="Search drives, folders, clients..."
                     QueryIcon="Find"
-                    Margin="16,8,16,8"
+                    CornerRadius="20"
+                    Margin="16,8,150,8"
                     TextChanged="SearchBox_TextChanged"
                     SuggestionChosen="SearchBox_SuggestionChosen"/>
                 <Frame Grid.Row="1" x:Name="ContentFrame"/>
             </Grid>
+
         </NavigationView>
 
-        <!-- ✅ NEW — Splash overlay, sits on top of everything -->
-        <!-- Covers the entire window with dark background + logo -->
-        <!-- Fades out after 2 seconds then collapses to nothing -->
         <Grid x:Name="SplashOverlay"
               Background="#0D1117"
               HorizontalAlignment="Stretch"

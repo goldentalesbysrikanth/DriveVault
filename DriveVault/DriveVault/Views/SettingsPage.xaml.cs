@@ -27,6 +27,22 @@ namespace DriveVault.Views
 
         private void LoadSettings()
         {
+            // ✅ ADDED — load saved theme and set correct radio button
+            ThemeLight.Checked -= ThemeLight_Checked;
+            ThemeDark.Checked -= ThemeDark_Checked;
+            ThemeSystem.Checked -= ThemeSystem_Checked;
+
+            var savedTheme = DatabaseHelper.GetSetting("app_theme", "system");
+            ThemeLight.IsChecked = savedTheme == "light";
+            ThemeDark.IsChecked = savedTheme == "dark";
+            ThemeSystem.IsChecked = savedTheme == "system";
+
+            ThemeLight.Checked += ThemeLight_Checked;
+            ThemeDark.Checked += ThemeDark_Checked;
+            ThemeSystem.Checked += ThemeSystem_Checked;
+
+            // ── Everything below identical to original ─────────────
+
             var installDate = DatabaseHelper.GetSetting("install_date", "");
             if (string.IsNullOrEmpty(installDate))
             {
@@ -119,7 +135,30 @@ namespace DriveVault.Views
                 list.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // ─── Startup ──────────────────────────────────────────────
+        // ✅ ADDED — 3 theme handlers
+        private void ThemeLight_Checked(object sender, RoutedEventArgs e)
+        {
+            DatabaseHelper.SaveSetting("app_theme", "light");
+            DatabaseHelper.LogSettingChange("App Theme", "other", "light");
+            if (App.MainWindow is MainWindow mw) mw.ApplyTheme();
+        }
+
+        private void ThemeDark_Checked(object sender, RoutedEventArgs e)
+        {
+            DatabaseHelper.SaveSetting("app_theme", "dark");
+            DatabaseHelper.LogSettingChange("App Theme", "other", "dark");
+            if (App.MainWindow is MainWindow mw) mw.ApplyTheme();
+        }
+
+        private void ThemeSystem_Checked(object sender, RoutedEventArgs e)
+        {
+            DatabaseHelper.SaveSetting("app_theme", "system");
+            DatabaseHelper.LogSettingChange("App Theme", "other", "system");
+            if (App.MainWindow is MainWindow mw) mw.ApplyTheme();
+        }
+
+        // ─── Everything below identical to original ───────────────
+
         private async void LaunchAtStartupToggle_Toggled(object sender,
             RoutedEventArgs e)
         {
@@ -127,7 +166,6 @@ namespace DriveVault.Views
             var oldVal = isOn ? "false" : "true";
             DatabaseHelper.SaveSetting("launch_at_startup",
                 isOn ? "true" : "false");
-            // ✅ Log
             DatabaseHelper.LogSettingChange("Launch at Startup",
                 oldVal, isOn ? "true" : "false");
             try
@@ -152,9 +190,7 @@ namespace DriveVault.Views
         {
             var isOn = AutoIndexToggle.IsOn;
             var oldVal = isOn ? "false" : "true";
-            DatabaseHelper.SaveSetting("auto_index",
-                isOn ? "true" : "false");
-            // ✅ Log
+            DatabaseHelper.SaveSetting("auto_index", isOn ? "true" : "false");
             DatabaseHelper.LogSettingChange("Auto Index",
                 oldVal, isOn ? "true" : "false");
         }
@@ -165,7 +201,6 @@ namespace DriveVault.Views
             var oldVal = isOn ? "false" : "true";
             DatabaseHelper.SaveSetting("ask_before_index",
                 isOn ? "true" : "false");
-            // ✅ Log
             DatabaseHelper.LogSettingChange("Ask Before Index",
                 oldVal, isOn ? "true" : "false");
         }
@@ -177,7 +212,6 @@ namespace DriveVault.Views
             var oldVal = DatabaseHelper.GetSetting("alert_threshold", "90");
             AlertThresholdText.Text = $"{val}%";
             DatabaseHelper.SaveSetting("alert_threshold", val.ToString());
-            // ✅ Log only if changed
             if (oldVal != val.ToString())
                 DatabaseHelper.LogSettingChange("Alert Threshold",
                     $"{oldVal}%", $"{val}%");
@@ -190,7 +224,6 @@ namespace DriveVault.Views
             var oldVal = DatabaseHelper.GetSetting("alert_days_unseen", "3");
             AlertDaysText.Text = $"{val} day{(val == 1 ? "" : "s")}";
             DatabaseHelper.SaveSetting("alert_days_unseen", val.ToString());
-            // ✅ Log only if changed
             if (oldVal != val.ToString())
                 DatabaseHelper.LogSettingChange("Alert Days Unseen",
                     $"{oldVal} days", $"{val} days");
@@ -210,7 +243,6 @@ namespace DriveVault.Views
                 list.Add(name);
                 DatabaseHelper.SaveSetting("excluded_drives",
                     string.Join(",", list));
-                // ✅ Log
                 DatabaseHelper.LogSettingChange("Excluded Drives",
                     raw, string.Join(",", list));
             }
@@ -229,14 +261,11 @@ namespace DriveVault.Views
                     .ToList();
                 var newVal = string.Join(",", list);
                 DatabaseHelper.SaveSetting("excluded_drives", newVal);
-                // ✅ Log
-                DatabaseHelper.LogSettingChange("Excluded Drives",
-                    raw, newVal);
+                DatabaseHelper.LogSettingChange("Excluded Drives", raw, newVal);
                 LoadExcludedDrives();
             }
         }
 
-        // ─── App Passcode ─────────────────────────────────────────
         private async void SetPasscode_Click(object sender, RoutedEventArgs e)
         {
             if (AppLockService.HasPasscode)
@@ -313,10 +342,8 @@ namespace DriveVault.Views
                 var recoveryKey = AppLockService.SetPasscode(newPass.Password);
                 LoadSettings();
 
-                // ✅ Log
                 DatabaseHelper.LogSettingChange("App Passcode",
-                    wasSet ? "Changed" : "Not Set",
-                    "Set");
+                    wasSet ? "Changed" : "Not Set", "Set");
 
                 var recoveryPanel = new StackPanel { Spacing = 12 };
                 recoveryPanel.Children.Add(new TextBlock
@@ -364,8 +391,7 @@ namespace DriveVault.Views
                 recoveryPanel.Children.Add(new TextBlock
                 {
                     Text = "Store this in a safe place (notepad, password manager, etc.)",
-                    Style = (Style)Application.Current
-                        .Resources["CaptionTextBlockStyle"],
+                    Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
                     Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current
                         .Resources["TextFillColorSecondaryBrush"],
                     TextWrapping = TextWrapping.Wrap,
@@ -401,7 +427,6 @@ namespace DriveVault.Views
             if (await confirm.ShowAsync() == ContentDialogResult.Primary)
             {
                 AppLockService.RemovePasscode();
-                // ✅ Log
                 DatabaseHelper.LogSettingChange("App Passcode", "Set", "Removed");
                 LoadSettings();
             }
@@ -499,7 +524,6 @@ namespace DriveVault.Views
                     continue;
                 }
 
-                // ✅ Log
                 DatabaseHelper.LogSettingChange("App Passcode",
                     "Reset via Recovery Key", "New Passcode Set");
 
@@ -562,13 +586,11 @@ namespace DriveVault.Views
         {
             var isOn = AppLockToggle.IsOn;
             AppLockService.SetAppLock(isOn);
-            // ✅ Log
             DatabaseHelper.LogSettingChange("App Lock",
                 isOn ? "Disabled" : "Enabled",
                 isOn ? "Enabled" : "Disabled");
         }
 
-        // ─── Activity Password ────────────────────────────────────
         private void SavePassword_Click(object sender, RoutedEventArgs e)
         {
             var pwd = ActivityPasswordBox.Password;
@@ -578,12 +600,10 @@ namespace DriveVault.Views
             DatabaseHelper.SaveSetting("activity_password", pwd);
             ActivityPasswordBox.Password = "";
             PasswordStatusText.Text = "✅ Password saved!";
-            // ✅ Log
             DatabaseHelper.LogSettingChange("Activity Password",
                 hadPassword ? "Changed" : "Not Set", "Set");
         }
 
-        // ─── Backup ───────────────────────────────────────────────
         private async void CreateBackup_Click(object sender, RoutedEventArgs e)
         {
             var path = BackupService.CreateManualBackup();
@@ -694,9 +714,7 @@ namespace DriveVault.Views
             if (listView.SelectedItem is not ListViewItem selected) return;
 
             var filePath = selected.Tag?.ToString() ?? "";
-
             BackupService.CreateManualBackup();
-
             var success = BackupService.RestoreBackup(filePath);
 
             if (success)
@@ -725,7 +743,6 @@ namespace DriveVault.Views
             }
         }
 
-        // ─── Purchase License ─────────────────────────────────────
         private void PurchaseLicense_Click(object sender, RoutedEventArgs e)
         {
             Process.Start(new ProcessStartInfo
@@ -735,7 +752,6 @@ namespace DriveVault.Views
             });
         }
 
-        // ─── Open DB Folder ───────────────────────────────────────
         private void OpenDbFolder_Click(object sender, RoutedEventArgs e)
         {
             var dbPath = Path.Combine(
@@ -748,7 +764,6 @@ namespace DriveVault.Views
             });
         }
 
-        // ─── Reset App ────────────────────────────────────────────
         private async void ResetApp_Click(object sender, RoutedEventArgs e)
         {
             if (AppLockService.HasPasscode)
@@ -804,7 +819,6 @@ namespace DriveVault.Views
             }
         }
 
-        // ─── Helper: Verify Current Passcode ─────────────────────
         private async System.Threading.Tasks.Task<bool> VerifyCurrentPasscode()
         {
             var passBox = new PasswordBox
